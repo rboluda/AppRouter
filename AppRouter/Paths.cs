@@ -13,8 +13,8 @@ public static class Paths
             .FirstOrDefault(a => a.Key == "SingBoxVersion")?.Value ?? "?";
     public static string SingBoxSourceUrl => $"https://github.com/SagerNet/sing-box/tree/v{SingBoxVersion}";
 
-    /// <summary>Página del proyecto (repositorio de GitHub). Vacía hasta que se publique.</summary>
-    public static readonly string ProjectUrl = "";
+    /// <summary>Página del proyecto (repositorio de GitHub).</summary>
+    public static readonly string ProjectUrl = "https://github.com/rboluda/approuter";
 
     /// <summary>Versión de la app (de &lt;Version&gt; en el .csproj), sin el sufijo "+commit".</summary>
     public static string Version =>

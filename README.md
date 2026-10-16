@@ -12,7 +12,7 @@ Por ejemplo: JDownloader descargando por la Wi-Fi mientras el navegador y todo l
 
 ## Descargar e instalar
 
-1. Descarga **`AppRouter-x.y.z.exe`** de la [última versión](../../releases/latest).
+1. Descarga **`AppRouter-x.y.z.exe`** de la [última versión](https://github.com/rboluda/approuter/releases/latest).
 2. Ábrelo, acepta el aviso de Windows y pulsa **Instalar**.
 
 Es un único archivo: incluye todo lo necesario (.NET y [sing-box](https://github.com/SagerNet/sing-box)), no hay que instalar nada más.

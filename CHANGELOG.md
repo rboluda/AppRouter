@@ -27,4 +27,4 @@ Versión interna («Enrutado por programa» / `SingBoxRouter`).
 - Instalador en un único `.exe` (incluye .NET y sing-box 1.14.3) y servicio de Windows propio.
 - Ventana «Comprobar…»: por dónde sale cada conexión según sing-box y según Windows.
 
-[1.1.0]: ../../releases/tag/v1.1.0
+[1.1.0]: https://github.com/rboluda/approuter/releases/tag/v1.1.0

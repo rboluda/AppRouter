@@ -66,4 +66,8 @@ jobs:
 
           Cambios: ver [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/v$v/CHANGELOG.md).
           "@
-          gh release create $env:GITHUB_REF_NAME (Get-ChildItem dist -File).FullName --title "AppRouter $v" --notes $notes
+          $files = (Get-ChildItem dist -File).FullName
+          # Si la Release ya existe (etiqueta movida y vuelta a subir), solo se sustituyen sus archivos.
+          gh release view $env:GITHUB_REF_NAME *> $null
+          if ($LASTEXITCODE -eq 0) { gh release upload $env:GITHUB_REF_NAME $files --clobber }
+          else { gh release create $env:GITHUB_REF_NAME $files --title "AppRouter $v" --notes $notes }

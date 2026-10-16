@@ -20,6 +20,8 @@ Requiere Windows 10/11 de 64 bits y permisos de administrador.
 
 > Si aparece «Windows protegió su PC», pulsa **Más información → Ejecutar de todas formas**. Sale porque el ejecutable no está firmado digitalmente.
 > Puedes comprobar el archivo con `SHA256SUMS.txt`, que se publica junto a cada versión.
+>
+> La firma de código se gestionará con [SignPath Foundation](https://signpath.org) (ver [Code signing policy](#code-signing-policy)).
 
 ## Uso
 
@@ -78,6 +80,21 @@ Genera `dist/AppRouter.exe` (autocontenido, un solo archivo). La compilación **
 3. GitHub Actions ([build.yml](.github/workflows/build.yml)) compila y crea la Release con `AppRouter-1.1.0.exe`, `LEEME.txt` y `SHA256SUMS.txt`.
 
 Para actualizar sing-box: ver [AppRouter/vendor/README.txt](AppRouter/vendor/README.txt).
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
+- **Committers and reviewers:** [rboluda](https://github.com/rboluda)
+- **Approvers:** [rboluda](https://github.com/rboluda)
+
+Only `AppRouter.exe` built from this repository by [GitHub Actions](.github/workflows/build.yml) is signed, and every signing request is approved manually. The bundled [sing-box](https://github.com/SagerNet/sing-box) binaries are included unmodified from their official upstream release.
+
+## Privacy
+
+This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it.
+
+AppRouter only changes how the user's own network traffic leaves the computer, according to the rules the user configures. Its settings and logs stay on the local machine (`C:\ProgramData\AppRouter\`), and it talks to sing-box only through a local API bound to `127.0.0.1`. It contains no telemetry, analytics or update checks.
 
 ## Licencia
 

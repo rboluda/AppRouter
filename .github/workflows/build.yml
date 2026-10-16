@@ -65,6 +65,8 @@ jobs:
           Si Windows muestra «Windows protegió su PC», pulsa «Más información» → «Ejecutar de todas formas» (el ejecutable no está firmado digitalmente).
 
           Cambios: ver [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/v$v/CHANGELOG.md).
+
+          Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org) — see the [code signing policy](https://github.com/${{ github.repository }}#code-signing-policy) and [privacy](https://github.com/${{ github.repository }}#privacy) statements.
           "@
           $files = (Get-ChildItem dist -File).FullName
           # Si la Release ya existe (etiqueta movida y vuelta a subir), solo se sustituyen sus archivos.

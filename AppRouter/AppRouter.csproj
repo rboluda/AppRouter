@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>assets\AppRouter.ico</ApplicationIcon>
+    <AssemblyName>AppRouter</AssemblyName>
+    <RootNamespace>AppRouter</RootNamespace>
+
+    <!-- Versión: se cambia aquí (o con -p:Version=x.y.z, que es lo que hace el workflow de GitHub). -->
+    <Version>1.1.0</Version>
+    <Product>AppRouter</Product>
+    <Description>Elige por qué conexión de red sale cada programa (sing-box).</Description>
+    <Copyright>GPL-3.0-or-later</Copyright>
+  </PropertyGroup>
+
+  <!-- Paquete para usuarios finales: un único .exe autocontenido (no requiere instalar .NET). -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+  <!-- sing-box oficial, sin modificar (GPLv3). Se descarga al compilar y se comprueba su SHA-256. -->
+  <PropertyGroup>
+    <SingBoxVersion>1.14.3</SingBoxVersion>
+    <SingBoxSha256>d8b86ef58936dba9230ec6a57ffa4243933f3c14ef4809828b6c553440ed1518</SingBoxSha256>
+    <SingBoxZip>sing-box-$(SingBoxVersion)-windows-amd64.zip</SingBoxZip>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="vendor\$(SingBoxZip)" LogicalName="sing-box.zip" />
+    <EmbeddedResource Include="assets\AppRouter.ico" LogicalName="AppRouter.ico" />
+    <AssemblyMetadata Include="SingBoxVersion" Value="$(SingBoxVersion)" />
+  </ItemGroup>
+
+  <Target Name="FetchSingBox" BeforeTargets="PrepareForBuild" Condition="!Exists('vendor\$(SingBoxZip)')">
+    <Message Importance="high" Text="Descargando sing-box $(SingBoxVersion)…" />
+    <DownloadFile SourceUrl="https://github.com/SagerNet/sing-box/releases/download/v$(SingBoxVersion)/$(SingBoxZip)"
+                  DestinationFolder="vendor" />
+  </Target>
+
+  <Target Name="VerifySingBox" AfterTargets="FetchSingBox" BeforeTargets="PrepareForBuild">
+    <VerifyFileHash File="vendor\$(SingBoxZip)" Hash="$(SingBoxSha256)" Algorithm="SHA256" />
+  </Target>
+
+</Project>

@@ -1,0 +1,76 @@
+APPROUTER
+=========
+
+Sirve para elegir por qué conexión (cable, Wi-Fi, etc.) sale a internet cada programa.
+
+
+INSTALAR (o actualizar)
+-----------------------
+1. Haz doble clic en AppRouter-x.y.z.exe.
+2. Windows preguntará si permites que haga cambios: pulsa «Sí».
+   Si aparece «Windows protegió su PC», pulsa «Más información» y luego «Ejecutar de todas formas».
+3. Pulsa «Instalar». Al terminar se abre AppRouter.
+
+No hace falta instalar nada más. Si ya estaba instalado, el botón dice «Actualizar» y tu lista
+de programas se conserva. Después de instalar ya no necesitas el archivo descargado.
+
+
+USAR
+----
+1. Elige en el desplegable de la fila «+ Añadir programa» por qué conexión debe salir,
+   y pulsa «+ Añadir programa» para elegir el programa (su archivo .exe).
+   También puedes arrastrar el .exe a la ventana.
+2. Puedes cambiar la conexión de cada programa en su desplegable, o quitarlo con la ✕.
+3. «Resto del tráfico» es la conexión del resto de programas (normalmente Ethernet).
+4. Pulsa «Guardar y aplicar».
+
+Guardar no corta las descargas en curso: lo que ya estaba abierto sigue por la conexión de
+antes hasta que termine, y lo nuevo usa la conexión nueva.
+
+Las redes 10.x.x.x (la red interna) no se tocan: siempre van por su camino normal.
+
+
+ABRIR Y CERRAR
+--------------
+• AppRouter se abre solo al iniciar sesión y se queda junto al reloj (icono azul con flechas).
+• Cerrar la ventana (X) solo la oculta: el enrutado sigue funcionando.
+  Para volver a abrirla, doble clic en el icono junto al reloj (o en el acceso directo).
+• Para desactivarlo: clic derecho en el icono → «Salir y desactivar el enrutado».
+  Todo vuelve a salir por la conexión normal de Windows hasta que vuelvas a abrir AppRouter.
+• Si no quieres que se abra al iniciar sesión: clic derecho en el icono → desmarca
+  «Iniciar con Windows».
+
+
+COMPROBAR QUE FUNCIONA
+----------------------
+1. Pulsa «Comprobar…».
+2. Abre los programas de la lista y úsalos (por ejemplo, empieza una descarga).
+3. En «Resumen por programa» cada programa sale en:
+     VERDE  = sale por la conexión que le has puesto.
+     ROJO   = sale por otra conexión. Revisa la lista y pulsa «Guardar y aplicar».
+     ÁMBAR  = correcto, pero hay conexiones abiertas antes del último cambio que siguen por
+              la conexión anterior hasta que se cierren (es normal). Si quieres moverlas ya,
+              pulsa «Mover ya las conexiones antiguas».
+     GRIS   = ahora mismo no está conectándose a internet; úsalo y espera unos segundos.
+4. Abajo del todo ves cuánto tráfico pasa por cada conexión cada segundo: al descargar con
+   un programa, debe subir el de su conexión.
+
+Si un programa siempre sale en gris aunque lo uses, puede que sus conexiones las haga otro
+proceso con otro nombre. Desmarca «Solo programas de la lista» para ver todos los nombres y
+añade el que corresponda.
+
+
+DESINSTALAR
+-----------
+Configuración de Windows > Aplicaciones > Aplicaciones instaladas > AppRouter > Desinstalar.
+Todo el tráfico vuelve a salir por la conexión normal de Windows.
+
+
+SI ALGO FALLA
+-------------
+En «Comprobar…» pulsa «Abrir registro de sing-box» y envía ese texto a soporte.
+Archivos de configuración: C:\ProgramData\AppRouter\
+
+
+AppRouter es software libre (GPLv3). Incluye sing-box sin modificar (GPLv3):
+https://github.com/SagerNet/sing-box

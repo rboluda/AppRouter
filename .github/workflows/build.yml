@@ -1,0 +1,69 @@
+# Compila AppRouter en cada push / pull request.
+# Al subir una etiqueta vX.Y.Z (p. ej. "git tag v1.1.0 && git push origin v1.1.0") además
+# crea la Release de GitHub con el ejecutable listo para descargar.
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write   # necesario para crear la Release
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Versión
+        id: ver
+        shell: pwsh
+        run: |
+          # En una etiqueta vX.Y.Z la versión sale de la etiqueta; si no, la del .csproj.
+          if ($env:GITHUB_REF_TYPE -eq 'tag') { $v = $env:GITHUB_REF_NAME.TrimStart('v') }
+          else { $v = ([xml](Get-Content AppRouter/AppRouter.csproj)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1 }
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Compilar (descarga y verifica sing-box)
+        run: dotnet publish AppRouter/AppRouter.csproj -c Release -o dist -p:Version=${{ steps.ver.outputs.version }}
+
+      - name: Preparar archivos
+        shell: pwsh
+        run: |
+          $v = '${{ steps.ver.outputs.version }}'
+          Move-Item dist/AppRouter.exe "dist/AppRouter-$v.exe"
+          Copy-Item docs/LEEME.txt dist/
+          Get-ChildItem dist -File | Where-Object Name -ne 'SHA256SUMS.txt' | ForEach-Object {
+            "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)"
+          } | Out-File dist/SHA256SUMS.txt -Encoding ascii
+          Get-ChildItem dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AppRouter-${{ steps.ver.outputs.version }}
+          path: dist/*
+
+      - name: Crear Release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = '${{ steps.ver.outputs.version }}'
+          $notes = @"
+          **Descarga [AppRouter-$v.exe](https://github.com/${{ github.repository }}/releases/download/v$v/AppRouter-$v.exe)**, ábrelo y pulsa «Instalar» (o «Actualizar»).
+          No hace falta instalar nada más: incluye .NET y sing-box.
+
+          Si Windows muestra «Windows protegió su PC», pulsa «Más información» → «Ejecutar de todas formas» (el ejecutable no está firmado digitalmente).
+
+          Cambios: ver [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/v$v/CHANGELOG.md).
+          "@
+          gh release create $env:GITHUB_REF_NAME (Get-ChildItem dist -File).FullName --title "AppRouter $v" --notes $notes

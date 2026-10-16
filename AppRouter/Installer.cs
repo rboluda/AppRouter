@@ -23,7 +23,7 @@ public static class Installer
 
     public static void Install(IProgress<string> progress)
     {
-        progress.Report("Cerrando versiones anteriores…");
+        progress.Report(L.T("Cerrando versiones anteriores…"));
         KillOtherAppRouterInstances();
         MigrateLegacy();
 
@@ -31,36 +31,36 @@ public static class Installer
         if (wasInstalled) StopService(Paths.ServiceName);
         KillSingBoxUnder(Paths.InstallDir);
 
-        progress.Report("Copiando archivos…");
+        progress.Report(L.T("Copiando archivos…"));
         Directory.CreateDirectory(Paths.InstallDir);
         if (!Paths.RunningFromInstallDir)
             File.Copy(Paths.CurrentExe, Paths.InstalledExe, overwrite: true);
 
-        progress.Report($"Instalando sing-box {Paths.SingBoxVersion}…");
+        progress.Report(L.F("Instalando sing-box {0}…", Paths.SingBoxVersion));
         ExtractSingBox();
 
-        progress.Report("Preparando la configuración…");
+        progress.Report(L.T("Preparando la configuración…"));
         var settings = AppSettings.Load();
         var interfaces = AppSettings.GetInterfaces();
         settings.DefaultInterface ??= AppSettings.GuessEthernet(interfaces);
         if (settings.DefaultInterface is null)
-            throw new InvalidOperationException("No se ha encontrado ningún adaptador de red.");
-        var error = SingBoxService.Commit(SingBoxService.Plan(settings, settings.DefaultInterface));
-        if (error is not null) throw new InvalidOperationException("Configuración inicial no válida:\n" + error);
+            throw new InvalidOperationException(L.T("No se ha encontrado ningún adaptador de red."));
+        var error = SingBoxService.Commit(SingBoxService.Plan(settings));
+        if (error is not null) throw new InvalidOperationException(L.T("Configuración inicial no válida:") + "\n" + error);
         settings.AppliedAt = DateTimeOffset.UtcNow;
         settings.Save();
 
-        progress.Report("Registrando el servicio…");
+        progress.Report(L.T("Registrando el servicio…"));
         // Inicio manual: el enrutado solo está activo mientras AppRouter está abierto.
         var bin = $"\\\"{Paths.InstalledExe}\\\" --service";
         if (wasInstalled)
             Sc($"config {Paths.ServiceName} binPath= \"{bin}\" start= demand");
         else
             Sc($"create {Paths.ServiceName} binPath= \"{bin}\" start= demand DisplayName= \"{Paths.AppName} (sing-box)\"");
-        Sc($"description {Paths.ServiceName} \"Envía el tráfico de cada programa por el adaptador de red elegido en AppRouter (sing-box {Paths.SingBoxVersion}).\"");
+        Sc($"description {Paths.ServiceName} \"{L.F("Envía el tráfico de cada programa por el adaptador de red elegido en AppRouter (sing-box {0}).", Paths.SingBoxVersion)}\"");
         Sc($"failure {Paths.ServiceName} reset= 86400 actions= restart/5000/restart/5000/restart/30000");
 
-        progress.Report("Creando accesos directos…");
+        progress.Report(L.T("Creando accesos directos…"));
         CreateShortcut(Path.Combine(StartMenuDir, ShortcutName));
         CreateShortcut(Path.Combine(DesktopDir, ShortcutName));
         Autostart.Enable();
@@ -149,7 +149,7 @@ public static class Installer
     static void ExtractSingBox()
     {
         using var res = Assembly.GetExecutingAssembly().GetManifestResourceStream("sing-box.zip")
-                        ?? throw new InvalidOperationException("Este ejecutable no incluye sing-box.");
+                        ?? throw new InvalidOperationException(L.T("Este ejecutable no incluye sing-box."));
         using var zip = new ZipArchive(res);
         Directory.CreateDirectory(Paths.SingBoxDir);
         foreach (var entry in zip.Entries.Where(e => e.Name != ""))
@@ -193,7 +193,7 @@ public static class Installer
         var output = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
         p.WaitForExit();
         if (p.ExitCode != 0 && throwOnError)
-            throw new InvalidOperationException($"{Path.GetFileName(exe)} {args.Split(' ')[0]} falló ({p.ExitCode}):\n{output.Trim()}");
+            throw new InvalidOperationException(L.F("{0} {1} falló ({2}):", Path.GetFileName(exe), args.Split(' ')[0], p.ExitCode) + "\n" + output.Trim());
         return output;
     }
 
@@ -208,7 +208,7 @@ public static class Installer
             dynamic lnk = shell.CreateShortcut(path);
             lnk.TargetPath = Paths.InstalledExe;
             lnk.WorkingDirectory = Paths.InstallDir;
-            lnk.Description = "Elige por qué conexión de red sale cada programa";
+            lnk.Description = L.T("Elige por qué conexión de red sale cada programa.");
             lnk.IconLocation = Paths.InstalledExe + ",0";
             lnk.Save();
         }

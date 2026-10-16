@@ -11,7 +11,7 @@ namespace AppRouter;
 /// <summary>Una conexión activa según la API de sing-box.</summary>
 public record Connection(string Id, string Network, string ProcessPath, string Host, IPAddress? DestIp, int DestPort, string OutboundTag, long Upload, long Download, DateTimeOffset? Start)
 {
-    public string ProcessName => ProcessPath == "" ? "(desconocido)" : Path.GetFileName(ProcessPath);
+    public string ProcessName => ProcessPath == "" ? L.T("(desconocido)") : Path.GetFileName(ProcessPath);
     public string Destination => (Host != "" ? Host : DestIp?.ToString() ?? "?") + ":" + DestPort;
 }
 
@@ -179,25 +179,29 @@ public sealed class DnsCache
 /// <summary>Stale = va por otra salida, pero se abrió antes del último cambio (es lo esperado: se mantiene hasta que se cierre).</summary>
 public enum Verdict { Ok, Wrong, Stale, Unknown }
 
+/// <summary>
+/// Expected y ViaSingBox son destinos (nombre de interfaz, <see cref="Routing.Blocked"/> o
+/// <see cref="Routing.Auto"/>); se muestran con <see cref="Routing.Display"/>.
+/// </summary>
 public record CheckedConnection(Connection Conn, string Expected, string ViaSingBox, string ViaWindows, Verdict Verdict);
 
 public static class Verifier
 {
     /// <summary>
-    /// Para cada conexión: interfaz esperada (regla o "resto del tráfico"), la que dice sing-box
-    /// y la que dice Windows (IP local del socket real). Correcta solo si coinciden todas las conocidas.
+    /// Para cada conexión: destino esperado ahora (regla, «resto del tráfico» o el de respaldo si su
+    /// conexión está caída), el que dice sing-box y el que dice Windows (IP local del socket real).
+    /// Correcta solo si coinciden todos los conocidos.
     /// </summary>
     public static List<CheckedConnection> Evaluate(
-        IEnumerable<Connection> conns, AppSettings settings,
+        IEnumerable<Connection> conns, AppSettings settings, ISet<string> usable,
         List<WindowsSockets.TcpRow> singBoxSockets, Dictionary<IPAddress, string> addrToAdapter,
         Func<string, IPAddress[]>? resolve = null)
     {
         var result = new List<CheckedConnection>();
         foreach (var c in conns)
         {
-            var rule = settings.Rules.FirstOrDefault(r => r.ProcessName.Equals(c.ProcessName, StringComparison.OrdinalIgnoreCase));
-            var expected = rule?.Interface ?? settings.DefaultInterface ?? "?";
-            var via = SingBoxConfig.InterfaceFromTag(c.OutboundTag) ?? (c.OutboundTag == "" ? "?" : c.OutboundTag);
+            var expected = Routing.Effective(settings, Routing.RuleFor(settings, c.ProcessName), usable);
+            var via = SingBoxConfig.TargetFromTag(c.OutboundTag) ?? (c.OutboundTag == "" ? "" : c.OutboundTag);
 
             // Si sing-box solo conoce el nombre (p. ej. conexiones por dominio), se resuelve aquí.
             IPAddress[] destIps = c.DestIp is not null ? [c.DestIp]
@@ -222,9 +226,11 @@ public static class Verifier
             }
 
             var verdict = Verdict.Ok;
-            if (via == "?") verdict = Verdict.Unknown;
+            if (via == "") verdict = Verdict.Unknown;
             else if (!via.Equals(expected, StringComparison.OrdinalIgnoreCase)) verdict = Verdict.Wrong;
-            if (verdict == Verdict.Ok && viaWindows != "—" && !viaWindows.Equals(expected, StringComparison.OrdinalIgnoreCase))
+            // Con destino «Automática» no hay un adaptador concreto que comparar con Windows.
+            if (verdict == Verdict.Ok && expected != Routing.Auto && viaWindows != "—"
+                && !viaWindows.Equals(expected, StringComparison.OrdinalIgnoreCase))
                 verdict = viaWindows.Contains(" / ") ? Verdict.Unknown : Verdict.Wrong;
 
             if (verdict == Verdict.Wrong && c.Start is { } st && settings.AppliedAt is { } applied && st < applied)

@@ -34,7 +34,7 @@ public static class SingBoxService
         using var p = Process.Start(psi)!;
         var stdout = p.StandardOutput.ReadToEndAsync();
         var stderr = p.StandardError.ReadToEndAsync();
-        if (!p.WaitForExit(15000)) { p.Kill(); return "sing-box check no respondió."; }
+        if (!p.WaitForExit(15000)) { p.Kill(); return L.T("sing-box check no respondió."); }
         return p.ExitCode == 0 ? null : (stderr.Result + stdout.Result).Trim();
     }
 
@@ -46,12 +46,12 @@ public static class SingBoxService
     /// es decir, si aparece un adaptador nuevo; cambiar programas o el adaptador por defecto
     /// solo toca los rule-sets, que sing-box recarga en caliente.
     /// </summary>
-    public static ApplyPlan Plan(AppSettings settings, string finalInterface)
+    public static ApplyPlan Plan(AppSettings settings)
     {
         var wanted = AppSettings.GetInterfaces()
             .Concat(settings.Rules.Select(r => r.Interface))
-            .Append(finalInterface)
-            .Where(i => !string.IsNullOrWhiteSpace(i));
+            .Append(settings.DefaultInterface ?? "")
+            .Where(i => !string.IsNullOrWhiteSpace(i) && i is not (Routing.Blocked or Routing.Auto));
         var added = wanted.Except(settings.KnownInterfaces, StringComparer.OrdinalIgnoreCase)
             .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         settings.KnownInterfaces = settings.KnownInterfaces.Concat(added)
@@ -59,7 +59,20 @@ public static class SingBoxService
 
         var config = SingBoxConfig.BuildConfig(settings);
         var current = File.Exists(Paths.ConfigPath) ? File.ReadAllText(Paths.ConfigPath) : null;
-        return new ApplyPlan(config, SingBoxConfig.BuildRuleSets(settings, finalInterface), current != config, added);
+        return new ApplyPlan(config, SingBoxConfig.BuildRuleSets(settings, NetworkState.Usable()), current != config, added);
+    }
+
+    /// <summary>
+    /// Tras un cambio de red: vuelve a escribir solo los rule-sets (recarga en caliente, sin cortar nada).
+    /// Devuelve true si alguno cambió.
+    /// </summary>
+    public static bool RefreshRuleSets(AppSettings settings, ISet<string> usable)
+    {
+        Directory.CreateDirectory(Paths.RulesDir);
+        var changed = false;
+        foreach (var (path, json) in SingBoxConfig.BuildRuleSets(settings, usable))
+            changed |= WriteAtomic(path, json);
+        return changed;
     }
 
     /// <summary>
@@ -88,12 +101,13 @@ public static class SingBoxService
     }
 
     /// <summary>Escritura atómica (sing-box nunca lee un archivo a medias). No toca el archivo si no cambia.</summary>
-    static void WriteAtomic(string path, string content)
+    static bool WriteAtomic(string path, string content)
     {
-        if (File.Exists(path) && File.ReadAllText(path) == content) return;
+        if (File.Exists(path) && File.ReadAllText(path) == content) return false;
         var tmp = path + ".tmp";
         File.WriteAllText(tmp, content);
         File.Move(tmp, path, overwrite: true);
+        return true;
     }
 
     public static void Stop(TimeSpan timeout)

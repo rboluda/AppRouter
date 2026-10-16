@@ -20,10 +20,13 @@ public static class SingBoxConfig
     const string TagPrefix = "direct-";
     const string AutoTag = "direct-auto";
 
+    const string BlockedTag = "blocked";
+
     public static string OutboundTag(string iface) => TagPrefix + iface;
 
-    public static string? InterfaceFromTag(string tag) =>
-        tag == AutoTag ? null : tag.StartsWith(TagPrefix, StringComparison.Ordinal) ? tag[TagPrefix.Length..] : null;
+    /// <summary>Destino (interfaz o <see cref="Routing.Auto"/>) de una salida de sing-box; null si no es nuestra.</summary>
+    public static string? TargetFromTag(string tag) =>
+        tag == AutoTag ? Routing.Auto : tag.StartsWith(TagPrefix, StringComparison.Ordinal) ? tag[TagPrefix.Length..] : null;
 
     static readonly JsonSerializerOptions JsonOpts = new()
     {
@@ -51,18 +54,21 @@ public static class SingBoxConfig
         outbounds.Add(new JsonObject { ["type"] = "direct", ["tag"] = AutoTag });
 
         var ruleSets = new JsonArray();
-        foreach (var iface in interfaces)
-            foreach (var tag in new[] { ProgramsTag(iface), DefaultTag(iface) })
-                ruleSets.Add(new JsonObject
-                {
-                    ["type"] = "local",
-                    ["tag"] = tag,
-                    ["format"] = "source",
-                    ["path"] = RuleSetPath(tag).Replace('\\', '/'),
-                });
+        foreach (var tag in interfaces.SelectMany(i => new[] { ProgramsTag(i), DefaultTag(i) }).Prepend(BlockedTag))
+            ruleSets.Add(new JsonObject
+            {
+                ["type"] = "local",
+                ["tag"] = tag,
+                ["format"] = "source",
+                ["path"] = RuleSetPath(tag).Replace('\\', '/'),
+            });
 
-        // Primero todas las reglas de programas y después las del "resto del tráfico".
-        var rules = new JsonArray();
+        // Primero los programas sin internet, luego los programas de la lista y por último el "resto del tráfico".
+        // Lo que no coincide con nada (resto del tráfico desconectado) va por "final": la ruta de Windows.
+        var rules = new JsonArray
+        {
+            new JsonObject { ["rule_set"] = BlockedTag, ["action"] = "reject" },
+        };
         foreach (var iface in interfaces)
             rules.Add(new JsonObject { ["rule_set"] = ProgramsTag(iface), ["action"] = "route", ["outbound"] = OutboundTag(iface) });
         foreach (var iface in interfaces)
@@ -106,26 +112,36 @@ public static class SingBoxConfig
         return root.ToJsonString(JsonOpts);
     }
 
-    /// <summary>Contenido de cada rule-set: ruta del archivo → JSON.</summary>
-    public static Dictionary<string, string> BuildRuleSets(AppSettings settings, string finalInterface)
+    /// <summary>
+    /// Contenido de cada rule-set (ruta del archivo → JSON) según el destino actual de cada programa:
+    /// si una interfaz está desconectada y la opción es «usar la del resto», sus programas pasan a esa.
+    /// </summary>
+    public static Dictionary<string, string> BuildRuleSets(AppSettings settings, ISet<string> usable)
     {
-        var files = new Dictionary<string, string>();
+        var target = settings.Rules
+            .Where(r => r.ProcessName != "")
+            .Select(r => (Name: r.ProcessName, Target: Routing.Effective(settings, r, usable)))
+            .ToList();
+        var defaultTarget = Routing.EffectiveDefault(settings, usable);
+
+        List<string> NamesFor(string t) => target
+            .Where(x => x.Target.Equals(t, StringComparison.OrdinalIgnoreCase))
+            .Select(x => x.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+        var files = new Dictionary<string, string> { [RuleSetPath(BlockedTag)] = ProcessRuleSet(NamesFor(Routing.Blocked)) };
         foreach (var iface in settings.KnownInterfaces)
         {
-            var names = settings.Rules
-                .Where(r => r.Interface.Equals(iface, StringComparison.OrdinalIgnoreCase) && r.ProcessName != "")
-                .Select(r => r.ProcessName)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-            files[RuleSetPath(ProgramsTag(iface))] = RuleSet(names.Count == 0 ? [] :
-                [new JsonObject { ["process_name"] = Array(names) }]);
-
-            var isDefault = iface.Equals(finalInterface, StringComparison.OrdinalIgnoreCase);
+            files[RuleSetPath(ProgramsTag(iface))] = ProcessRuleSet(NamesFor(iface));
+            var isDefault = iface.Equals(defaultTarget, StringComparison.OrdinalIgnoreCase);
             files[RuleSetPath(DefaultTag(iface))] = RuleSet(!isDefault ? [] :
                 [new JsonObject { ["ip_cidr"] = Array(["0.0.0.0/0", "::/0"]) }]);
         }
+        // Programas que en este momento van por la ruta de Windows (Auto) no se listan: caen en "final".
         return files;
     }
+
+    static string ProcessRuleSet(List<string> names) =>
+        RuleSet(names.Count == 0 ? [] : [new JsonObject { ["process_name"] = Array(names) }]);
 
     static string RuleSet(JsonNode[] rules) =>
         new JsonObject { ["version"] = 3, ["rules"] = new JsonArray(rules) }.ToJsonString(JsonOpts);

@@ -17,16 +17,17 @@ internal static class Program
         }
 
         ApplicationConfiguration.Initialize();
+        L.Set(File.Exists(Paths.SettingsPath) ? AppSettings.Load().Language : null);
 
         if (args.Contains("--uninstall"))
         {
-            if (MessageBox.Show($"¿Desinstalar {Paths.AppName}?\n\nTodo el tráfico volverá a salir por la conexión normal de Windows.",
+            if (MessageBox.Show(L.T("¿Desinstalar AppRouter?") + "\n\n" + L.T("Todo el tráfico volverá a salir por la conexión normal de Windows."),
                     Paths.AppName, MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
                 return 1;
             try
             {
                 Installer.Uninstall();
-                MessageBox.Show($"{Paths.AppName} se ha desinstalado.", Paths.AppName, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(L.T("AppRouter se ha desinstalado."), Paths.AppName, MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return 0;
             }
             catch (Exception ex)
@@ -44,9 +45,10 @@ internal static class Program
         }
 
         // Una sola copia: si ya está abierta (p. ej. en el área de notificación), se le pide que se muestre.
-        using var mutex = new Mutex(true, InstanceMutex, out var first);
+        // Con --restart (cambio de idioma) se espera a que la copia anterior termine de cerrarse.
+        using var mutex = new Mutex(false, InstanceMutex);
         using var show = new EventWaitHandle(false, EventResetMode.AutoReset, ShowEvent);
-        if (!first)
+        if (!Acquire(mutex, args.Contains("--restart") ? TimeSpan.FromSeconds(15) : TimeSpan.Zero))
         {
             show.Set();
             return 0;
@@ -62,5 +64,11 @@ internal static class Program
 
         Application.Run(form);
         return 0;
+    }
+
+    static bool Acquire(Mutex m, TimeSpan wait)
+    {
+        try { return m.WaitOne(wait); }
+        catch (AbandonedMutexException) { return true; } // la copia anterior se cerró sin liberarlo: ya es nuestro
     }
 }

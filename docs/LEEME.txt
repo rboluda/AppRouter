@@ -1,7 +1,8 @@
 APPROUTER
 =========
 
-Sirve para elegir por qué conexión (cable, Wi-Fi, etc.) sale a internet cada programa.
+Sirve para elegir por qué conexión (cable, Wi-Fi, 4G, etc.) sale a internet cada programa.
+Disponible en español, inglés y chino.
 
 
 INSTALAR (o actualizar)
@@ -17,17 +18,39 @@ de programas se conserva. Después de instalar ya no necesitas el archivo descar
 
 USAR
 ----
-1. Elige en el desplegable de la fila «+ Añadir programa» por qué conexión debe salir,
-   y pulsa «+ Añadir programa» para elegir el programa (su archivo .exe).
-   También puedes arrastrar el .exe a la ventana.
+1. Elige en el desplegable de la fila «+ Añadir programa» por qué conexión debe salir, y pulsa
+   «+ Añadir programa»: verás los programas que tienes abiertos, con su icono. Marca los que
+   quieras y pulsa «Añadir». Si no está abierto, usa «Examinar…» (o arrastra el .exe a la ventana).
 2. Puedes cambiar la conexión de cada programa en su desplegable, o quitarlo con la ✕.
+   La opción «Sin internet» deja ese programa sin conexión.
 3. «Resto del tráfico» es la conexión del resto de programas (normalmente Ethernet).
 4. Pulsa «Guardar y aplicar».
 
 Guardar no corta las descargas en curso: lo que ya estaba abierto sigue por la conexión de
 antes hasta que termine, y lo nuevo usa la conexión nueva.
 
-Las redes 10.x.x.x (la red interna) no se tocan: siempre van por su camino normal.
+Si una conexión aparece como «(desconectada)», ahora mismo no está disponible en el equipo.
+
+
+CONFIGURACIÓN (menú Herramientas → Configuración…)
+--------------------------------------------------
+General
+  • Idioma de la ventana (se aplica al reiniciar AppRouter; el enrutado no se corta).
+  • Abrir AppRouter al iniciar sesión.
+  • Avisarme cuando se desconecte o vuelva una conexión que uso.
+  • Buscar actualizaciones automáticamente (desactivado si no lo marcas).
+  • Exportar / Importar: guarda tu lista y tus ajustes en un archivo para llevarlos a otro equipo.
+
+Interfaces
+  Marca solo las conexiones que quieres ver en los desplegables (por ejemplo Ethernet, Wi-Fi
+  y 4G). «Solo físicas» marca las reales y deja fuera las virtuales y de VPN.
+
+Enrutado
+  • Si se desconecta la conexión de un programa:
+      - dejarlo sin internet hasta que vuelva (no sale nunca por otra), o
+      - usar mientras tanto la del resto del tráfico (cambia solo y vuelve solo).
+  • Redes que no pasan por AppRouter: el tráfico hacia ellas (por ejemplo, la red interna
+    10.x.x.x) va siempre por su camino normal. Cambiarlas corta un momento las conexiones.
 
 
 ABRIR Y CERRAR
@@ -37,23 +60,21 @@ ABRIR Y CERRAR
   Para volver a abrirla, doble clic en el icono junto al reloj (o en el acceso directo).
 • Para desactivarlo: clic derecho en el icono → «Salir y desactivar el enrutado».
   Todo vuelve a salir por la conexión normal de Windows hasta que vuelvas a abrir AppRouter.
-• Si no quieres que se abra al iniciar sesión: clic derecho en el icono → desmarca
-  «Iniciar con Windows».
 
 
-COMPROBAR QUE FUNCIONA
-----------------------
-1. Pulsa «Comprobar…».
-2. Abre los programas de la lista y úsalos (por ejemplo, empieza una descarga).
-3. En «Resumen por programa» cada programa sale en:
+COMPROBAR QUE FUNCIONA (botón «Comprobar…»)
+------------------------------------------
+1. Abre los programas de la lista y úsalos (por ejemplo, empieza una descarga).
+2. En «Resumen por programa» cada programa sale en:
      VERDE  = sale por la conexión que le has puesto.
      ROJO   = sale por otra conexión. Revisa la lista y pulsa «Guardar y aplicar».
      ÁMBAR  = correcto, pero hay conexiones abiertas antes del último cambio que siguen por
               la conexión anterior hasta que se cierren (es normal). Si quieres moverlas ya,
               pulsa «Mover ya las conexiones antiguas».
      GRIS   = ahora mismo no está conectándose a internet; úsalo y espera unos segundos.
-4. Abajo del todo ves cuánto tráfico pasa por cada conexión cada segundo: al descargar con
-   un programa, debe subir el de su conexión.
+3. Abajo del todo ves cuánto tráfico pasa por cada conexión cada segundo.
+4. En la pestaña «Tráfico por programa» ves cuánto ha enviado y recibido cada programa, y por
+   qué conexión, desde que abriste AppRouter.
 
 Si un programa siempre sale en gris aunque lo uses, puede que sus conexiones las haga otro
 proceso con otro nombre. Desmarca «Solo programas de la lista» para ver todos los nombres y

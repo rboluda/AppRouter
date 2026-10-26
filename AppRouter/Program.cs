@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.ServiceProcess;
 
 namespace AppRouter;
@@ -37,6 +38,10 @@ internal static class Program
             }
         }
 
+        // Actualización automática: el instalador descargado se ejecuta sin ventanas y reabre AppRouter.
+        if (args.Contains("--update") && !Paths.RunningFromInstallDir)
+            return SilentUpdate();
+
         // El .exe descargado (fuera de Program Files) hace de instalador / actualizador.
         if (!Paths.RunningFromInstallDir || !SingBoxService.Exists())
         {
@@ -54,7 +59,7 @@ internal static class Program
             return 0;
         }
 
-        var form = new MainForm(startHidden: args.Contains("--tray"));
+        var form = new MainForm(startHidden: args.Contains("--tray"), updated: args.Contains("--updated"));
         var listener = new Thread(() =>
         {
             while (show.WaitOne())
@@ -64,6 +69,33 @@ internal static class Program
 
         Application.Run(form);
         return 0;
+    }
+
+    static int SilentUpdate()
+    {
+        var log = Path.Combine(Paths.DataDir, "update.log");
+        void Log(string m)
+        {
+            try { File.AppendAllText(log, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {m}{Environment.NewLine}"); } catch { }
+        }
+        try
+        {
+            Log($"Actualizando a {Paths.Version}…");
+            Installer.Install(new Progress<string>(Log));
+            Log("Actualización terminada.");
+            Process.Start(new ProcessStartInfo(Paths.InstalledExe, "--tray --updated") { UseShellExecute = false, WorkingDirectory = Paths.InstallDir });
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Log("Error: " + ex);
+            MessageBox.Show(L.T("No se pudo instalar la actualización de AppRouter:") + "\n\n" + ex.Message + "\n\n" +
+                            L.F("Detalles en {0}", log), Paths.AppName, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            // Se reabre la versión instalada (la anterior, o la nueva si llegó a copiarse) para no dejar el enrutado apagado.
+            if (File.Exists(Paths.InstalledExe))
+                try { Process.Start(new ProcessStartInfo(Paths.InstalledExe, "--tray") { UseShellExecute = false, WorkingDirectory = Paths.InstallDir }); } catch { }
+            return 1;
+        }
     }
 
     static bool Acquire(Mutex m, TimeSpan wait)

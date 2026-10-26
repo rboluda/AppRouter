@@ -51,6 +51,8 @@ public class AppSettings
 
     /// <summary>Consultar a GitHub si hay versión nueva (desactivado por defecto: ver la sección Privacy del README).</summary>
     public bool CheckUpdates { get; set; }
+    /// <summary>Además de avisar, descargar e instalar las actualizaciones solo (requiere <see cref="CheckUpdates"/>).</summary>
+    public bool AutoUpdate { get; set; }
     public DateTimeOffset? LastUpdateCheck { get; set; }
 
     // --- Interno ---
@@ -103,6 +105,7 @@ public class AppSettings
         ExcludedSubnets = [.. o.ExcludedSubnets];
         NotifyNetworkChanges = o.NotifyNetworkChanges;
         CheckUpdates = o.CheckUpdates;
+        AutoUpdate = o.AutoUpdate;
     }
 
     // --- Exportar / importar ---
@@ -120,6 +123,7 @@ public class AppSettings
         public string? Language { get; set; }
         public bool NotifyNetworkChanges { get; set; } = true;
         public bool CheckUpdates { get; set; }
+        public bool AutoUpdate { get; set; }
     }
 
     public string Export() => JsonSerializer.Serialize(new Exported
@@ -132,6 +136,7 @@ public class AppSettings
         Language = Language,
         NotifyNetworkChanges = NotifyNetworkChanges,
         CheckUpdates = CheckUpdates,
+        AutoUpdate = AutoUpdate,
     }, JsonOpts);
 
     /// <summary>Carga un archivo exportado sobre estos ajustes. Lanza excepción si no es válido.</summary>
@@ -153,6 +158,7 @@ public class AppSettings
         Language = e.Language;
         NotifyNetworkChanges = e.NotifyNetworkChanges;
         CheckUpdates = e.CheckUpdates;
+        AutoUpdate = e.AutoUpdate;
     }
 
     // --- Adaptadores ---

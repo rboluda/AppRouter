@@ -2,6 +2,15 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones según [SemVer](https://semver.org/lang/es/).
 
+## [1.4.0] - 2026-10-26
+
+### Añadido
+- **Actualización automática** (opcional, en *Configuración → General → Instalarlas solo*): descarga la nueva versión de GitHub, comprueba su SHA-256 y que es AppRouter de esa versión, y se instala sola cuando no hay descargas en curso (5 minutos con poco tráfico) o al iniciar AppRouter, antes de activar el enrutado. Al terminar vuelve a abrirse junto al reloj y avisa.
+- *Ayuda → Buscar actualizaciones* ofrece instalar la versión nueva directamente.
+
+### Corregido
+- El instalador cerraba los procesos de AppRouter antes de parar el servicio, y Windows podía relanzarlo en mitad de la copia (recuperación ante fallos). Ahora primero para el servicio; igual al desinstalar.
+
 ## [1.3.0] - 2026-10-26
 
 ### Añadido
@@ -57,6 +66,7 @@ Versión interna («Enrutado por programa» / `SingBoxRouter`).
 - Instalador en un único `.exe` (incluye .NET y sing-box 1.14.3) y servicio de Windows propio.
 - Ventana «Comprobar…»: por dónde sale cada conexión según sing-box y según Windows.
 
+[1.4.0]: https://github.com/rboluda/approuter/releases/tag/v1.4.0
 [1.3.0]: https://github.com/rboluda/approuter/releases/tag/v1.3.0
 [1.2.0]: https://github.com/rboluda/approuter/releases/tag/v1.2.0
 [1.1.0]: https://github.com/rboluda/approuter/releases/tag/v1.1.0

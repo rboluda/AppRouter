@@ -44,11 +44,16 @@ public class MainForm : Form
     bool hintShown;
     bool trafficBusy;
     bool filling;        // rellenando desplegables: no cuenta como cambio del usuario
+    readonly System.Windows.Forms.Timer installTimer = new() { Interval = 60 * 1000 };
+    DateTime? quietSince;  // desde cuándo el tráfico por AppRouter es bajo (para instalar actualizaciones sin molestar)
+    long lastTotalBytes = -1;
+    bool downloadingUpdate;
 
-    public MainForm(bool startHidden = false) : this(AppSettings.Load(), startHidden) { }
+    public MainForm(bool startHidden = false, bool updated = false) : this(AppSettings.Load(), startHidden, updated: updated) { }
 
     /// <param name="preview">Solo la ventana, sin tocar el servicio, la red ni las reglas (capturas de pantalla).</param>
-    internal MainForm(AppSettings settings, bool startHidden, bool preview = false)
+    /// <param name="updated">Recién actualizado por la actualización automática: se avisa junto al reloj.</param>
+    internal MainForm(AppSettings settings, bool startHidden, bool preview = false, bool updated = false)
     {
         this.settings = settings;
         api = new SingBoxApi(settings.ApiPort, settings.ApiSecret);
@@ -147,6 +152,10 @@ public class MainForm : Form
         ShowServiceStatus();
         if (preview) return;
 
+        UpdateChecker.Cleanup();
+        if (updated)
+            ShowBalloon(L.F("AppRouter se ha actualizado a la versión {0}.", Paths.Version), ToolTipIcon.Info);
+
         lastUsable = usable;
         NetworkChange.NetworkAddressChanged += OnNetworkEvent;
         NetworkChange.NetworkAvailabilityChanged += OnNetworkEvent;
@@ -154,12 +163,19 @@ public class MainForm : Form
         trafficTimer.Tick += async (_, _) => await PollTrafficAsync();
         trafficTimer.Start();
         updateTimer.Tick += async (_, _) => await CheckForUpdatesAsync(silent: true);
+        installTimer.Tick += (_, _) => TryInstallPendingUpdate();
+        installTimer.Start();
         updateTimer.Start();
         _ = StartupAsync();
     }
 
     async Task StartupAsync()
     {
+        // Una actualización ya descargada se instala al arrancar, antes de activar el enrutado:
+        // así no corta ninguna conexión.
+        if (settings.AutoUpdate && UpdateChecker.Pending() is not null
+            && SingBoxService.Status() is not ServiceControllerStatus.Running && InstallPendingUpdate())
+            return;
         await EnsureRoutingAsync();
         await CheckForUpdatesAsync(silent: true);
     }
@@ -404,15 +420,28 @@ public class MainForm : Form
     {
         if (trafficBusy) return;
         trafficBusy = true;
-        try { traffic.Update(await api.GetConnectionsAsync()); }
-        catch { /* servicio parado o arrancando */ }
+        try
+        {
+            var conns = await api.GetConnectionsAsync();
+            traffic.Update(conns);
+            // ¿Hay descargas en curso? (para elegir cuándo instalar una actualización)
+            var total = conns.Sum(c => c.Upload + c.Download);
+            var rate = lastTotalBytes < 0 ? 0 : (total - lastTotalBytes) / (trafficTimer.Interval / 1000.0);
+            lastTotalBytes = total;
+            if (rate > 64 * 1024) quietSince = null;
+            else quietSince ??= DateTime.Now;
+        }
+        catch { quietSince ??= DateTime.Now; /* servicio parado o arrancando: no hay nada que cortar */ }
         finally { trafficBusy = false; }
     }
 
-    async Task CheckForUpdatesAsync(bool silent)
+    /// <param name="silent">Comprobación automática (sin ventanas; respeta los ajustes y el intervalo diario).</param>
+    /// <param name="force">Comprobar aunque ya se hiciera hoy.</param>
+    async Task CheckForUpdatesAsync(bool silent, bool force = false)
     {
-        if (silent && (!settings.CheckUpdates || settings.LastUpdateCheck is { } last && DateTimeOffset.UtcNow - last < TimeSpan.FromHours(20)))
+        if (silent && (!settings.CheckUpdates || !force && settings.LastUpdateCheck is { } last && DateTimeOffset.UtcNow - last < TimeSpan.FromHours(20)))
             return;
+        if (downloadingUpdate) return;
         try
         {
             var latest = await UpdateChecker.GetLatestAsync();
@@ -420,24 +449,77 @@ public class MainForm : Form
             saved.LastUpdateCheck = settings.LastUpdateCheck = DateTimeOffset.UtcNow;
             saved.Save();
 
-            if (latest is not null && UpdateChecker.IsNewer(latest))
+            if (latest is null || !UpdateChecker.IsNewer(latest))
             {
-                var msg = L.F("Hay una versión nueva de AppRouter: {0} (tienes la {1}).", latest.Tag, Paths.Version);
-                if (silent)
-                    ShowBalloon(msg + " " + L.T("Haz clic aquí para descargarla."), ToolTipIcon.Info, latest.Url);
-                else if (MessageBox.Show(this, msg + "\n\n" + L.T("¿Abrir la página de descarga?"), Text,
-                             MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
-                    OpenUrl(latest.Url);
+                if (!silent)
+                    MessageBox.Show(this, L.F("Tienes la última versión ({0}).", Paths.Version), Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
             }
-            else if (!silent)
-                MessageBox.Show(this, L.F("Tienes la última versión ({0}).", Paths.Version), Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            var msg = L.F("Hay una versión nueva de AppRouter: {0} (tienes la {1}).", latest.Tag, Paths.Version);
+            if (silent && !settings.AutoUpdate)
+            {
+                ShowBalloon(msg + " " + L.T("Haz clic aquí para descargarla."), ToolTipIcon.Info, latest.Url);
+                return;
+            }
+            if (!silent && MessageBox.Show(this,
+                    msg + "\n\n" + L.T("¿Actualizar ahora? Se descarga, se comprueba y AppRouter se reinicia solo; las conexiones abiertas se cortarán unos segundos."),
+                    Text, MessageBoxButtons.YesNo, MessageBoxIcon.Information) != DialogResult.Yes)
+                return;
+
+            // Descarga y verificación (en segundo plano en el caso automático).
+            downloadingUpdate = true;
+            var progress = new Progress<int>(p => status.Text = L.F("Descargando la actualización {0}… {1} %", latest.Tag, p));
+            try
+            {
+                if (UpdateChecker.Pending() is null)
+                    await UpdateChecker.DownloadAsync(latest, silent ? null : progress, CancellationToken.None);
+            }
+            finally { downloadingUpdate = false; }
+
+            if (!silent)
+            {
+                InstallPendingUpdate();
+                return;
+            }
+            ShowBalloon(L.F("Se ha descargado AppRouter {0}. Se instalará solo cuando no haya descargas en curso (las conexiones se cortan unos segundos).", latest.Tag),
+                ToolTipIcon.Info);
+            TryInstallPendingUpdate();
         }
         catch (Exception ex)
         {
+            ShowServiceStatus();
             if (!silent)
-                MessageBox.Show(this, L.T("No se pudo consultar si hay actualizaciones:") + "\n" + ex.Message, Text,
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, L.T("No se pudo actualizar:") + "\n" + ex.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
+    }
+
+    /// <summary>Instala la actualización descargada si es buen momento: sin descargas en curso desde hace 5 minutos.</summary>
+    void TryInstallPendingUpdate()
+    {
+        if (!settings.AutoUpdate || downloadingUpdate || dirty || OwnedForms.Length > 0 || UpdateChecker.Pending() is null) return;
+        var running = SingBoxService.Status() == ServiceControllerStatus.Running;
+        if (running && (quietSince is null || DateTime.Now - quietSince < TimeSpan.FromMinutes(5))) return;
+        InstallPendingUpdate();
+    }
+
+    /// <summary>Lanza el instalador ya verificado y cierra esta copia (sin apagar el servicio: lo hace el instalador).</summary>
+    bool InstallPendingUpdate()
+    {
+        if (UpdateChecker.Pending() is not { } pending) return false;
+        try
+        {
+            UpdateChecker.Launch(pending.File);
+        }
+        catch (Exception ex)
+        {
+            ShowBalloon(L.T("No se pudo actualizar:") + " " + ex.Message, ToolTipIcon.Error);
+            return false;
+        }
+        exiting = true;
+        tray.Visible = false;
+        Application.Exit();
+        return true;
     }
 
     // ---------- Adaptadores ----------
@@ -736,7 +818,7 @@ public class MainForm : Form
         var languageChanged = r.Language != settings.Language;
         var visibleChanged = !r.VisibleInterfaces.SequenceEqual(settings.VisibleInterfaces);
         var routingChanged = r.OnDisconnect != settings.OnDisconnect || !r.ExcludedSubnets.SequenceEqual(settings.ExcludedSubnets);
-        var updatesEnabled = r.CheckUpdates && !settings.CheckUpdates;
+        var updatesEnabled = r.CheckUpdates && !settings.CheckUpdates || r.AutoUpdate && !settings.AutoUpdate;
 
         // Las preferencias se guardan sobre lo guardado (no sobre cambios de la lista aún sin aplicar).
         var saved = AppSettings.Load();
@@ -753,7 +835,7 @@ public class MainForm : Form
         else saved.Save();
 
         if (visibleChanged || routingChanged) { LoadInterfaces(); Rebuild(); }
-        if (updatesEnabled) await CheckForUpdatesAsync(silent: false);
+        if (updatesEnabled) await CheckForUpdatesAsync(silent: true, force: true);
         if (languageChanged && MessageBox.Show(this, L.T("El idioma cambiará al reiniciar AppRouter. El enrutado no se interrumpe.") + "\n\n" + L.T("¿Reiniciar ahora?"),
                 Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
             RestartApp();

@@ -150,9 +150,7 @@ public static partial class L
         ["{0} vuelve a salir por ella."] = ("{0} uses it again.", "{0} 已恢复使用它。"),
         ["Hay una versión nueva de AppRouter: {0} (tienes la {1})."] = ("A new version of AppRouter is available: {0} (you have {1}).", "AppRouter 有新版本：{0}（当前版本 {1}）。"),
         ["Haz clic aquí para descargarla."] = ("Click here to download it.", "点击此处下载。"),
-        ["¿Abrir la página de descarga?"] = ("Open the download page?", "要打开下载页面吗？"),
         ["Tienes la última versión ({0})."] = ("You have the latest version ({0}).", "已是最新版本（{0}）。"),
-        ["No se pudo consultar si hay actualizaciones:"] = ("Could not check for updates:", "无法检查更新："),
         ["(desconectada)"] = ("(disconnected)", "（已断开）"),
         ["Quitar"] = ("Remove", "移除"),
         ["+ Añadir programa"] = ("+ Add program", "+ 添加程序"),
@@ -269,6 +267,28 @@ public static partial class L
              "此程序的最高速度，单位为兆比特每秒（下载和上传）。可以输入任意数值。"),
         ["Como máximo puede haber {0} programas con límite de velocidad (ahora hay {1})."] =
             ("At most {0} programs can have a speed limit (there are {1} now).", "最多只能为 {0} 个程序设置限速（当前有 {1} 个）。"),
+
+        // --- Actualización automática ---
+        ["AppRouter se ha actualizado a la versión {0}."] = ("AppRouter has been updated to version {0}.", "AppRouter 已更新到 {0} 版本。"),
+        ["¿Actualizar ahora? Se descarga, se comprueba y AppRouter se reinicia solo; las conexiones abiertas se cortarán unos segundos."] =
+            ("Update now? It is downloaded, verified and AppRouter restarts by itself; open connections will be interrupted for a few seconds.",
+             "现在更新吗？将下载并校验，然后 AppRouter 自动重启；已打开的连接会中断几秒钟。"),
+        ["Descargando la actualización {0}… {1} %"] = ("Downloading update {0}… {1} %", "正在下载更新 {0}… {1}%"),
+        ["Se ha descargado AppRouter {0}. Se instalará solo cuando no haya descargas en curso (las conexiones se cortan unos segundos)."] =
+            ("AppRouter {0} has been downloaded. It will install itself when no downloads are running (connections are interrupted for a few seconds).",
+             "已下载 AppRouter {0}。将在没有正在进行的下载时自动安装（连接会中断几秒钟）。"),
+        ["No se pudo actualizar:"] = ("Could not update:", "无法更新："),
+        ["No se pudo instalar la actualización de AppRouter:"] = ("Could not install the AppRouter update:", "无法安装 AppRouter 更新："),
+        ["Detalles en {0}"] = ("Details in {0}", "详细信息见 {0}"),
+        ["Instalarlas solo (cuando no haya descargas en curso o al iniciar AppRouter)"] =
+            ("Install them automatically (when no downloads are running, or when AppRouter starts)", "自动安装（在没有正在进行的下载时，或 AppRouter 启动时）"),
+        ["La versión publicada no incluye el instalador o su suma de comprobación."] =
+            ("The published release does not include the installer or its checksum.", "发布的版本中缺少安装程序或其校验和。"),
+        ["SHA256SUMS.txt no contiene el instalador."] = ("SHA256SUMS.txt does not list the installer.", "SHA256SUMS.txt 中没有该安装程序。"),
+        ["El archivo descargado no coincide con su suma de comprobación (SHA-256). No se ha instalado nada."] =
+            ("The downloaded file does not match its checksum (SHA-256). Nothing was installed.", "下载的文件与其校验和（SHA-256）不符。未安装任何内容。"),
+        ["El archivo descargado no es AppRouter {0}. No se ha instalado nada."] =
+            ("The downloaded file is not AppRouter {0}. Nothing was installed.", "下载的文件不是 AppRouter {0}。未安装任何内容。"),
 
         // --- Varios ---
         ["Envía el tráfico de cada programa por el adaptador de red elegido en AppRouter (sing-box {0})."] =

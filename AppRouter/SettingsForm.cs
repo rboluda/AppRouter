@@ -14,6 +14,7 @@ public class SettingsForm : Form
     readonly CheckBox autostart = new() { AutoSize = true };
     readonly CheckBox notify = new() { AutoSize = true };
     readonly CheckBox updates = new() { AutoSize = true };
+    readonly CheckBox autoUpdate = new() { AutoSize = true, Margin = new Padding(24, 3, 3, 3) };
     readonly ListView nics = new()
     {
         Dock = DockStyle.Fill,
@@ -93,9 +94,14 @@ public class SettingsForm : Form
         notify.Checked = edit.NotifyNetworkChanges;
         updates.Text = L.T("Buscar actualizaciones automáticamente (consulta GitHub una vez al día)");
         updates.Checked = edit.CheckUpdates;
+        autoUpdate.Text = L.T("Instalarlas solo (cuando no haya descargas en curso o al iniciar AppRouter)");
+        autoUpdate.Checked = edit.AutoUpdate;
+        autoUpdate.Enabled = updates.Checked;
+        updates.CheckedChanged += (_, _) => autoUpdate.Enabled = updates.Checked;
         AddRow(t, autostart);
         AddRow(t, notify);
         AddRow(t, updates);
+        AddRow(t, autoUpdate);
 
         AddRow(t, Heading(L.T("Copia de la configuración")));
         var exp = new Button { Text = L.T("Exportar…"), AutoSize = true };
@@ -234,6 +240,7 @@ public class SettingsForm : Form
         edit.Language = language.SelectedIndex < L.Languages.Length ? L.Languages[language.SelectedIndex].Code : null;
         edit.NotifyNetworkChanges = notify.Checked;
         edit.CheckUpdates = updates.Checked;
+        edit.AutoUpdate = updates.Checked && autoUpdate.Checked;
         edit.VisibleInterfaces = nics.CheckedItems.Cast<ListViewItem>().Select(i => ((NicInfo)i.Tag!).Name).ToList();
         edit.OnDisconnect = onDownFallback.Checked ? DisconnectAction.Fallback : DisconnectAction.Block;
         if (newSubnet.Text.Trim() != "")

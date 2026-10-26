@@ -65,27 +65,3 @@ public sealed class TrafficTracker
         }
     }
 }
-
-/// <summary>Consulta la última versión publicada en GitHub (solo si el usuario lo activa o lo pide).</summary>
-public static class UpdateChecker
-{
-    public record Release(Version Version, string Tag, string Url);
-
-    public static async Task<Release?> GetLatestAsync()
-    {
-        var repo = new Uri(Paths.ProjectUrl).AbsolutePath.Trim('/'); // "rboluda/approuter"
-        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
-        http.DefaultRequestHeaders.UserAgent.ParseAdd($"AppRouter/{Paths.Version}");
-        http.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
-        using var doc = System.Text.Json.JsonDocument.Parse(
-            await http.GetStringAsync($"https://api.github.com/repos/{repo}/releases/latest"));
-        var tag = doc.RootElement.GetProperty("tag_name").GetString() ?? "";
-        var url = doc.RootElement.GetProperty("html_url").GetString() ?? Paths.ProjectUrl;
-        return ParseVersion(tag) is { } v ? new Release(v, tag, url) : null;
-    }
-
-    public static bool IsNewer(Release r) => ParseVersion(Paths.Version) is { } current && r.Version > current;
-
-    static Version? ParseVersion(string s) =>
-        Version.TryParse(s.TrimStart('v', 'V').Split('-', '+')[0], out var v) ? v : null;
-}

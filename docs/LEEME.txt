@@ -43,6 +43,10 @@ General
   • Abrir AppRouter al iniciar sesión.
   • Avisarme cuando se desconecte o vuelva una conexión que uso.
   • Buscar actualizaciones automáticamente (desactivado si no lo marcas).
+    Si además marcas «Instalarlas solo», AppRouter se actualiza sin que hagas nada: descarga
+    la versión nueva, comprueba que es la auténtica y la instala cuando no haya descargas en
+    curso (o la próxima vez que se abra). Las conexiones se cortan solo unos segundos y
+    después te avisa junto al reloj.
   • Exportar / Importar: guarda tu lista y tus ajustes en un archivo para llevarlos a otro equipo.
 
 Interfaces

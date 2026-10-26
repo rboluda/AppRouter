@@ -24,11 +24,12 @@ public static class Installer
     public static void Install(IProgress<string> progress)
     {
         progress.Report(L.T("Cerrando versiones anteriores…"));
-        KillOtherAppRouterInstances();
-        MigrateLegacy();
-
+        // Primero se para el servicio (si se matara su proceso, Windows lo relanzaría a los 5 s
+        // por la recuperación ante fallos, en mitad de la copia) y después las ventanas abiertas.
         var wasInstalled = SingBoxService.Exists();
         if (wasInstalled) StopService(Paths.ServiceName);
+        KillOtherAppRouterInstances();
+        MigrateLegacy();
         KillSingBoxUnder(Paths.InstallDir);
 
         progress.Report(L.T("Copiando archivos…"));
@@ -69,12 +70,12 @@ public static class Installer
 
     public static void Uninstall()
     {
-        KillOtherAppRouterInstances();
         if (SingBoxService.Exists())
         {
             StopService(Paths.ServiceName);
             Sc($"delete {Paths.ServiceName}", throwOnError: false);
         }
+        KillOtherAppRouterInstances();
         KillSingBoxUnder(Paths.InstallDir);
         Autostart.Disable();
         foreach (var s in new[] { Path.Combine(StartMenuDir, ShortcutName), Path.Combine(DesktopDir, ShortcutName) })

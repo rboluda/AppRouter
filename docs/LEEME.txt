@@ -23,8 +23,12 @@ USAR
    quieras y pulsa «Añadir». Si no está abierto, usa «Examinar…» (o arrastra el .exe a la ventana).
 2. Puedes cambiar la conexión de cada programa en su desplegable, o quitarlo con la ✕.
    La opción «Sin internet» deja ese programa sin conexión.
-3. «Resto del tráfico» es la conexión del resto de programas (normalmente Ethernet).
-4. Pulsa «Guardar y aplicar».
+3. En la columna «Límite» puedes poner la velocidad máxima de cada programa (en Mbps), para
+   que no se coma toda la conexión. «Ilimitado» es lo normal. Puedes elegir un valor de la
+   lista o escribir el que quieras (por ejemplo 2,5). El cambio se nota al momento, también en
+   las descargas que ya están en marcha. Como máximo 16 programas con límite.
+4. «Resto del tráfico» es la conexión del resto de programas (normalmente Ethernet).
+5. Pulsa «Guardar y aplicar».
 
 Guardar no corta las descargas en curso: lo que ya estaba abierto sigue por la conexión de
 antes hasta que termine, y lo nuevo usa la conexión nueva.

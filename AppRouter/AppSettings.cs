@@ -13,6 +13,9 @@ public class ProgramRule
     /// <summary>Nombre del adaptador, o <see cref="Routing.Blocked"/> para dejar el programa sin internet.</summary>
     public string Interface { get; set; } = "";
 
+    /// <summary>Límite de velocidad en megabits por segundo (bajada y subida, cada una); 0 = ilimitado.</summary>
+    public double LimitMbps { get; set; }
+
     [JsonIgnore]
     public string ProcessName => System.IO.Path.GetFileName(Path);
 }
@@ -63,6 +66,8 @@ public class AppSettings
     /// <summary>API local de sing-box (solo 127.0.0.1) que usan la comprobación y el tráfico por programa.</summary>
     public int ApiPort { get; set; } = 9097;
     public string ApiSecret { get; set; } = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
+    /// <summary>Puerto local del limitador de velocidad (dentro del servicio).</summary>
+    public int LimiterPort { get; set; } = 9098;
 
     static readonly JsonSerializerOptions JsonOpts = new() { WriteIndented = true };
 

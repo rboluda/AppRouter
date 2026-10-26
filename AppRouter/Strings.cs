@@ -260,6 +260,16 @@ public static partial class L
         ["«{0}» no es una red válida. Usa el formato dirección/prefijo, por ejemplo 192.168.1.0/24."] =
             ("“{0}” is not a valid network. Use the address/prefix format, for example 192.168.1.0/24.", "“{0}”不是有效的网络。请使用“地址/前缀”格式，例如 192.168.1.0/24。"),
 
+        // --- Límite de velocidad ---
+        ["LÍMITE"] = ("LIMIT", "限速"),
+        ["Límite"] = ("Limit", "限速"),
+        ["Ilimitado"] = ("Unlimited", "不限速"),
+        ["Velocidad máxima de este programa, en megabits por segundo (bajada y subida). Puedes escribir cualquier valor."] =
+            ("Maximum speed for this program, in megabits per second (download and upload). You can type any value.",
+             "此程序的最高速度，单位为兆比特每秒（下载和上传）。可以输入任意数值。"),
+        ["Como máximo puede haber {0} programas con límite de velocidad (ahora hay {1})."] =
+            ("At most {0} programs can have a speed limit (there are {1} now).", "最多只能为 {0} 个程序设置限速（当前有 {1} 个）。"),
+
         // --- Varios ---
         ["Envía el tráfico de cada programa por el adaptador de red elegido en AppRouter (sing-box {0})."] =
             ("Sends each program's traffic through the network adapter chosen in AppRouter (sing-box {0}).", "按 AppRouter 中的设置，将每个程序的流量发送到所选网卡（sing-box {0}）。"),

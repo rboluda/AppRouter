@@ -61,9 +61,11 @@ public class CheckForm : Form
         summary.Columns.Add("expected", L.T("Debería"));
         summary.Columns.Add("count", L.T("Conex."));
         summary.Columns.Add("actual", L.T("Sale por"));
+        summary.Columns.Add("limit", L.T("Límite"));
         summary.Columns.Add("result", L.T("Resultado"));
         summary.Columns["prog"]!.FillWeight = 140;
         summary.Columns["count"]!.FillWeight = 55;
+        summary.Columns["limit"]!.FillWeight = 70;
         summary.Columns["result"]!.FillWeight = 210;
 
         details.Columns.Add("prog", L.T("Programa"));
@@ -209,7 +211,10 @@ public class CheckForm : Form
             if (rule is not null && rule.Interface != Routing.Blocked && !usable.Contains(rule.Interface))
                 expectedText = L.F("{0} (desconectada)", rule.Interface) +
                                (expected != rule.Interface ? " → " + Routing.Display(expected) : "");
-            rows.Add([name, expectedText, mine.Count, actual, result]);
+            var limitText = rule is { LimitMbps: > 0 } && expected != Routing.Blocked
+                ? rule.LimitMbps.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture) + " Mbps"
+                : "—";
+            rows.Add([name, expectedText, mine.Count, actual, limitText, result]);
             colors.Add(color);
         }
         Replace(summary, rows, colors);

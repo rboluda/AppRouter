@@ -2,6 +2,17 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones según [SemVer](https://semver.org/lang/es/).
 
+## [1.3.0] - 2026-10-26
+
+### Añadido
+- **Límite de velocidad por programa** (columna *Límite*): «Ilimitado» por defecto, valores típicos (1–100 Mbps) o el que se escriba. Limita la bajada y la subida del programa sumando todas sus conexiones, TCP y UDP. Los cambios se aplican en caliente, también a las descargas en curso. Hasta 16 programas con límite.
+- Columna *Límite* en el resumen de «Comprobar…».
+
+### Cambiado
+- La configuración de sing-box incluye los 16 huecos del limitador: al actualizar desde 1.2 el servicio se reinicia una vez.
+- El DNS (puerto 53) de los programas de la lista se enruta con una regla propia por su interfaz.
+- Las escrituras de rule-sets reintentan si sing-box o el limitador están leyendo el archivo en ese instante.
+
 ## [1.2.0] - 2026-10-16
 
 ### Añadido
@@ -46,5 +57,6 @@ Versión interna («Enrutado por programa» / `SingBoxRouter`).
 - Instalador en un único `.exe` (incluye .NET y sing-box 1.14.3) y servicio de Windows propio.
 - Ventana «Comprobar…»: por dónde sale cada conexión según sing-box y según Windows.
 
+[1.3.0]: https://github.com/rboluda/approuter/releases/tag/v1.3.0
 [1.2.0]: https://github.com/rboluda/approuter/releases/tag/v1.2.0
 [1.1.0]: https://github.com/rboluda/approuter/releases/tag/v1.1.0

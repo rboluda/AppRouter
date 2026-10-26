@@ -22,7 +22,7 @@ public class MainForm : Form
         Dock = DockStyle.Top,
         AutoSize = true,
         AutoSizeMode = AutoSizeMode.GrowAndShrink,
-        ColumnCount = 3,
+        ColumnCount = 4,
         Padding = new Padding(8, 4, 8, 4),
     };
     readonly ComboBox newCombo = MakeComboShell();
@@ -58,22 +58,25 @@ public class MainForm : Form
         AutoScaleMode = AutoScaleMode.Dpi;
         Text = Paths.AppName;
         Font = new Font(L.FontName, 9.5f);
-        ClientSize = new Size(500, 580);
-        MinimumSize = new Size(440, 340);
+        ClientSize = new Size(610, 580);
+        MinimumSize = new Size(540, 340);
         StartPosition = FormStartPosition.CenterScreen;
         AllowDrop = true;
 
         rows.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         rows.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 170));
+        rows.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 112));
         rows.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 34));
 
-        // Cabecera: NOMBRE | INTERFAZ
-        var header = new TableLayoutPanel { Dock = DockStyle.Top, Height = 30, ColumnCount = 3, Padding = new Padding(8, 0, 8, 0) };
+        // Cabecera: NOMBRE | INTERFAZ | LÍMITE
+        var header = new TableLayoutPanel { Dock = DockStyle.Top, Height = 30, ColumnCount = 4, Padding = new Padding(8, 0, 8, 0) };
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 170));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 112));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 34));
         header.Controls.Add(HeaderLabel(L.T("NOMBRE")), 0, 0);
         header.Controls.Add(HeaderLabel(L.T("INTERFAZ")), 1, 0);
+        header.Controls.Add(HeaderLabel(L.T("LÍMITE")), 2, 0);
         var headerLine = new Label { Dock = DockStyle.Top, Height = 1, BackColor = SystemColors.ControlDark };
 
         var scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = SystemColors.Window };
@@ -488,14 +491,20 @@ public class MainForm : Form
 
             var combo = MakeComboShell();
             FillCombo(combo, rule.Interface, allowBlocked: true);
-            combo.SelectedIndexChanged += (_, _) => { rule.Interface = (combo.SelectedItem as ComboItem)?.Value ?? ""; dirty = true; };
+            var limit = MakeLimitCombo(rule);
+            combo.SelectedIndexChanged += (_, _) =>
+            {
+                rule.Interface = (combo.SelectedItem as ComboItem)?.Value ?? "";
+                limit.Enabled = rule.Interface != Routing.Blocked; // sin internet no hay nada que limitar
+                dirty = true;
+            };
 
             var remove = new Button { Text = "✕", Width = LogicalToDeviceUnits(28), Height = LogicalToDeviceUnits(27), FlatStyle = FlatStyle.Flat, Anchor = AnchorStyles.None };
             remove.FlatAppearance.BorderSize = 0;
             tips.SetToolTip(remove, L.T("Quitar"));
             remove.Click += (_, _) => { settings.Rules.Remove(rule); dirty = true; Rebuild(); };
 
-            AddRow(name, combo, remove);
+            AddRow(name, combo, limit, remove);
         }
 
         var add = new LinkLabel
@@ -507,18 +516,61 @@ public class MainForm : Form
         };
         add.LinkClicked += (_, _) => PickPrograms();
         tips.SetToolTip(newCombo, L.T("Interfaz para el programa que se añada"));
-        AddRow(add, newCombo, null);
+        AddRow(add, newCombo, null, null);
 
         rows.ResumeLayout();
     }
 
-    void AddRow(Control c0, Control c1, Control? c2)
+    void AddRow(Control c0, Control c1, Control? c2, Control? c3)
     {
         rows.RowStyles.Add(new RowStyle(SizeType.Absolute, LogicalToDeviceUnits(36)));
         var r = rows.RowCount++;
         rows.Controls.Add(c0, 0, r);
         rows.Controls.Add(c1, 1, r);
         if (c2 is not null) rows.Controls.Add(c2, 2, r);
+        if (c3 is not null) rows.Controls.Add(c3, 3, r);
+    }
+
+    // ---------- Límite de velocidad ----------
+
+    static readonly double[] LimitPresets = [1, 2, 5, 10, 20, 50, 100];
+
+    /// <summary>Desplegable editable: «Ilimitado», valores típicos o el número de Mbps que se escriba.</summary>
+    ComboBox MakeLimitCombo(ProgramRule rule)
+    {
+        var combo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDown, Dock = DockStyle.Fill, Margin = new Padding(3, 5, 3, 3) };
+        combo.Items.Add(FormatLimit(0));
+        foreach (var v in LimitPresets) combo.Items.Add(FormatLimit(v));
+        combo.Text = FormatLimit(rule.LimitMbps);
+        combo.Enabled = rule.Interface != Routing.Blocked;
+        tips.SetToolTip(combo, L.T("Velocidad máxima de este programa, en megabits por segundo (bajada y subida). Puedes escribir cualquier valor."));
+
+        void Commit()
+        {
+            if (ParseLimit(combo.Text) is { } v)
+            {
+                if (Math.Abs(v - rule.LimitMbps) > 0.0001) { rule.LimitMbps = v; dirty = true; }
+                combo.Text = FormatLimit(v);
+            }
+            else combo.Text = FormatLimit(rule.LimitMbps); // no era un número: se deja como estaba
+        }
+        combo.SelectionChangeCommitted += (_, _) => BeginInvoke(Commit);
+        combo.Validating += (_, _) => Commit();
+        combo.KeyDown += (_, e) => { if (e.KeyCode == Keys.Enter) { Commit(); e.SuppressKeyPress = true; } };
+        return combo;
+    }
+
+    static string FormatLimit(double mbps) =>
+        mbps <= 0 ? L.T("Ilimitado") : mbps.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture) + " Mbps";
+
+    /// <summary>"10", "10 Mbps", "2,5", "Ilimitado"… → Mbps (0 = ilimitado); null si no se entiende.</summary>
+    static double? ParseLimit(string text)
+    {
+        var t = text.Trim();
+        if (t == "" || t.Equals(L.T("Ilimitado"), StringComparison.OrdinalIgnoreCase) || t == "∞") return 0;
+        t = t.Replace("mbps", "", StringComparison.OrdinalIgnoreCase).Replace("mb/s", "", StringComparison.OrdinalIgnoreCase).Trim().Replace(',', '.');
+        return double.TryParse(t, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v)
+               && v >= 0 && v <= 100_000 ? Math.Round(v, 2) : null;
     }
 
     void PickPrograms()
@@ -557,6 +609,15 @@ public class MainForm : Form
                 L.T("Estas conexiones no existen ahora mismo en el equipo:") + "\n\n" + string.Join("\n", missing) + "\n\n" + L.T("¿Guardar igualmente?"),
                 Text, MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
             return false;
+
+        var limited = settings.Rules.Where(r => r.LimitMbps > 0 && r.Interface != Routing.Blocked)
+            .Select(r => r.ProcessName).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+        if (limited > LimiterMap.SlotCount)
+        {
+            MessageBox.Show(this, L.F("Como máximo puede haber {0} programas con límite de velocidad (ahora hay {1}).", LimiterMap.SlotCount, limited),
+                Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return false;
+        }
 
         settings.DefaultInterface = finalIface;
         if (!await ApplyAsync(settings)) return false;

@@ -21,12 +21,22 @@ public static class SingBoxConfig
     const string AutoTag = "direct-auto";
 
     const string BlockedTag = "blocked";
+    const string LimitTagPrefix = "lim-";
 
     public static string OutboundTag(string iface) => TagPrefix + iface;
+    static string LimitTag(int slot) => LimitTagPrefix + slot;
+    static string SlotRuleSet(int slot) => "s-" + slot;
 
     /// <summary>Destino (interfaz o <see cref="Routing.Auto"/>) de una salida de sing-box; null si no es nuestra.</summary>
-    public static string? TargetFromTag(string tag) =>
-        tag == AutoTag ? Routing.Auto : tag.StartsWith(TagPrefix, StringComparison.Ordinal) ? tag[TagPrefix.Length..] : null;
+    public static string? TargetFromTag(string tag)
+    {
+        if (tag == AutoTag) return Routing.Auto;
+        if (tag.StartsWith(TagPrefix, StringComparison.Ordinal)) return tag[TagPrefix.Length..];
+        // Programas con límite: salen por el limitador, que usa la interfaz de su hueco.
+        if (tag.StartsWith(LimitTagPrefix, StringComparison.Ordinal) && int.TryParse(tag[LimitTagPrefix.Length..], out var slot))
+            return LimiterMap.Read().TryGetValue(slot, out var s) ? s.Interface : null;
+        return null;
+    }
 
     static readonly JsonSerializerOptions JsonOpts = new()
     {
@@ -52,9 +62,22 @@ public static class SingBoxConfig
             outbounds.Add(new JsonObject { ["type"] = "direct", ["tag"] = OutboundTag(iface), ["bind_interface"] = iface });
         // Respaldo si ninguna regla coincide (no debería ocurrir): sigue la ruta por defecto de Windows.
         outbounds.Add(new JsonObject { ["type"] = "direct", ["tag"] = AutoTag });
+        // Huecos del limitador de velocidad (proxy SOCKS5 local dentro del servicio). Usuario = hueco.
+        for (var slot = 1; slot <= LimiterMap.SlotCount; slot++)
+            outbounds.Add(new JsonObject
+            {
+                ["type"] = "socks",
+                ["tag"] = LimitTag(slot),
+                ["server"] = "127.0.0.1",
+                ["server_port"] = settings.LimiterPort,
+                ["version"] = "5",
+                ["username"] = slot.ToString(),
+                ["password"] = settings.ApiSecret,
+            });
 
         var ruleSets = new JsonArray();
-        foreach (var tag in interfaces.SelectMany(i => new[] { ProgramsTag(i), DefaultTag(i) }).Prepend(BlockedTag))
+        var slotSets = Enumerable.Range(1, LimiterMap.SlotCount).Select(SlotRuleSet);
+        foreach (var tag in slotSets.Concat(interfaces.SelectMany(i => new[] { ProgramsTag(i), DefaultTag(i) })).Prepend(BlockedTag))
             ruleSets.Add(new JsonObject
             {
                 ["type"] = "local",
@@ -69,6 +92,12 @@ public static class SingBoxConfig
         {
             new JsonObject { ["rule_set"] = BlockedTag, ["action"] = "reject" },
         };
+        // El DNS (puerto 53) de los programas no pasa por el limitador: strict_route de sing-box bloquea
+        // el puerto 53 a cualquier otro proceso, y además su velocidad es insignificante.
+        foreach (var iface in interfaces)
+            rules.Add(new JsonObject { ["rule_set"] = ProgramsTag(iface), ["port"] = new JsonArray(53), ["action"] = "route", ["outbound"] = OutboundTag(iface) });
+        for (var slot = 1; slot <= LimiterMap.SlotCount; slot++)
+            rules.Add(new JsonObject { ["rule_set"] = SlotRuleSet(slot), ["action"] = "route", ["outbound"] = LimitTag(slot) });
         foreach (var iface in interfaces)
             rules.Add(new JsonObject { ["rule_set"] = ProgramsTag(iface), ["action"] = "route", ["outbound"] = OutboundTag(iface) });
         foreach (var iface in interfaces)
@@ -124,11 +153,22 @@ public static class SingBoxConfig
             .ToList();
         var defaultTarget = Routing.EffectiveDefault(settings, usable);
 
+        // Programas con límite (y una interfaz real como destino ahora mismo): cada uno a su hueco del limitador.
+        // También siguen en el rule-set de su interfaz, que se usa para su DNS (ver BuildConfig).
+        var slots = AssignSlots(settings, usable);
+
         List<string> NamesFor(string t) => target
             .Where(x => x.Target.Equals(t, StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
-        var files = new Dictionary<string, string> { [RuleSetPath(BlockedTag)] = ProcessRuleSet(NamesFor(Routing.Blocked)) };
+        // limits.json va primero: el limitador debe conocer el hueco antes de que sing-box lo use.
+        var files = new Dictionary<string, string>
+        {
+            [Paths.LimitsPath] = LimiterMap.Serialize(slots.ToDictionary(kv => kv.Key, kv => new LimiterMap.Slot(kv.Value.Interface, kv.Value.Mbps))),
+            [RuleSetPath(BlockedTag)] = ProcessRuleSet(NamesFor(Routing.Blocked)),
+        };
+        for (var slot = 1; slot <= LimiterMap.SlotCount; slot++)
+            files[RuleSetPath(SlotRuleSet(slot))] = ProcessRuleSet(slots.TryGetValue(slot, out var s) ? [s.Name] : []);
         foreach (var iface in settings.KnownInterfaces)
         {
             files[RuleSetPath(ProgramsTag(iface))] = ProcessRuleSet(NamesFor(iface));
@@ -138,6 +178,25 @@ public static class SingBoxConfig
         }
         // Programas que en este momento van por la ruta de Windows (Auto) no se listan: caen en "final".
         return files;
+    }
+
+    /// <summary>
+    /// Hueco del limitador para cada programa con límite, en el orden de la lista. Si hay más de
+    /// <see cref="LimiterMap.SlotCount"/>, los que sobran van sin límite (la ventana no lo permite).
+    /// </summary>
+    public static Dictionary<int, (string Name, string Interface, double Mbps)> AssignSlots(AppSettings settings, ISet<string> usable)
+    {
+        var result = new Dictionary<int, (string, string, double)>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var r in settings.Rules.Where(r => r.LimitMbps > 0 && r.ProcessName != ""))
+        {
+            if (!seen.Add(r.ProcessName)) continue; // mismo nombre de proceso dos veces: vale el primero
+            var t = Routing.Effective(settings, r, usable);
+            if (t is Routing.Blocked or Routing.Auto) continue;
+            if (result.Count == LimiterMap.SlotCount) break;
+            result[result.Count + 1] = (r.ProcessName, t, r.LimitMbps);
+        }
+        return result;
     }
 
     static string ProcessRuleSet(List<string> names) =>

@@ -106,8 +106,12 @@ public static class SingBoxService
         if (File.Exists(path) && File.ReadAllText(path) == content) return false;
         var tmp = path + ".tmp";
         File.WriteAllText(tmp, content);
-        File.Move(tmp, path, overwrite: true);
-        return true;
+        // sing-box o el limitador pueden estar leyéndolo justo en ese instante: se reintenta un poco.
+        for (var attempt = 1; ; attempt++)
+        {
+            try { File.Move(tmp, path, overwrite: true); return true; }
+            catch (IOException) when (attempt < 10) { Thread.Sleep(50); }
+        }
     }
 
     public static void Stop(TimeSpan timeout)

@@ -94,10 +94,18 @@ public static class WindowsSockets
         return map;
     }
 
+    /// <summary>
+    /// Procesos que abren las conexiones reales hacia internet: sing-box y, para los programas con
+    /// límite de velocidad, el servicio de AppRouter (su limitador).
+    /// </summary>
     public static HashSet<int> SingBoxPids()
     {
         var pids = new HashSet<int>();
-        foreach (var p in Process.GetProcessesByName("sing-box")) { pids.Add(p.Id); p.Dispose(); }
+        foreach (var p in Process.GetProcessesByName("sing-box").Concat(Process.GetProcessesByName("AppRouter")))
+        {
+            if (p.Id != Environment.ProcessId) pids.Add(p.Id);
+            p.Dispose();
+        }
         return pids;
     }
 

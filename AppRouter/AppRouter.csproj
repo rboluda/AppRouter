@@ -13,7 +13,7 @@
     <RootNamespace>AppRouter</RootNamespace>
 
     <!-- Versión: se cambia aquí (o con -p:Version=x.y.z, que es lo que hace el workflow de GitHub). -->
-    <Version>1.2.0</Version>
+    <Version>1.3.0</Version>
     <Product>AppRouter</Product>
     <Description>Elige por qué conexión de red sale cada programa (sing-box).</Description>
     <Copyright>GPL-3.0-or-later</Copyright>

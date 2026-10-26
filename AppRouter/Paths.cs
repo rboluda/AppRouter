@@ -32,6 +32,7 @@ public static class Paths
     public static string SettingsPath => Path.Combine(DataDir, "settings.json");
     public static string ConfigPath => Path.Combine(DataDir, "config.json");
     public static string RulesDir => Path.Combine(DataDir, "rules");
+    public static string LimitsPath => Path.Combine(DataDir, "limits.json");
     public static string LogPath => Path.Combine(DataDir, "sing-box.log");
 
     public static string CurrentExe => Environment.ProcessPath!;

@@ -32,11 +32,28 @@ public sealed class SingBoxHostService : ServiceBase
         // Job object: si este proceso muere, Windows mata también sing-box (no queda el túnel huérfano).
         job = Native.CreateKillOnCloseJob();
         stopping = false;
+        StartLimiter();
         StartChild();
     }
 
-    protected override void OnStop() => StopChild();
-    protected override void OnShutdown() => StopChild();
+    protected override void OnStop() { StopChild(); limiter?.Dispose(); }
+    protected override void OnShutdown() { StopChild(); limiter?.Dispose(); }
+
+    LimiterServer? limiter;
+
+    /// <summary>El limitador de velocidad vive en este proceso; sing-box le envía los programas con límite.</summary>
+    void StartLimiter()
+    {
+        OpenLog();
+        try
+        {
+            // Sin AppSettings.Load(): en un servicio no se puede mostrar ningún mensaje.
+            var s = System.Text.Json.JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(Paths.SettingsPath)) ?? new();
+            limiter = new LimiterServer(s.LimiterPort, s.ApiSecret, Log);
+            limiter.Start();
+        }
+        catch (Exception ex) { Log("No se pudo iniciar el limitador de velocidad: " + ex.Message); }
+    }
 
     void StartChild()
     {

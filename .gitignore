@@ -6,3 +6,8 @@ dist/
 
 # sing-box se descarga y se verifica al compilar (ver AppRouter.csproj)
 AppRouter/vendor/*.zip
+
+# Certificado de firma: nunca en el repositorio (está en %USERPROFILE%\.firma)
+*.pfx
+*.p12
+*.clave

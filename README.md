@@ -18,7 +18,7 @@ Por ejemplo: JDownloader descargando por la Wi-Fi mientras el navegador y todo l
 Es un único archivo: incluye todo lo necesario (.NET y [sing-box](https://github.com/SagerNet/sing-box)), no hay que instalar nada más.
 Requiere Windows 10/11 de 64 bits y permisos de administrador.
 
-> Si aparece «Windows protegió su PC», pulsa **Más información → Ejecutar de todas formas**. Sale porque el ejecutable no está firmado digitalmente.
+> El ejecutable está firmado digitalmente por **rboluda** (certificado propio). Como no es de una entidad reconocida, Windows puede mostrar igualmente «Windows protegió su PC»: pulsa **Más información → Ejecutar de todas formas**.
 > Puedes comprobar el archivo con `SHA256SUMS.txt`, que se publica junto a cada versión.
 >
 > La firma de código se gestionará con [SignPath Foundation](https://signpath.org) (ver [Code signing policy](#code-signing-policy)).
@@ -86,13 +86,14 @@ Genera `dist/AppRouter.exe` (autocontenido, un solo archivo). La compilación **
 
 ## Publicar una versión
 
-1. Sube `<Version>` en `AppRouter/AppRouter.csproj` y añade la entrada en [CHANGELOG.md](CHANGELOG.md).
-2. Crea y sube la etiqueta:
-   ```bash
-   git tag -a v1.4.0 -m "AppRouter 1.4.0"
-   git push origin v1.4.0
+1. Sube `<Version>` en `AppRouter/AppRouter.csproj`, añade la entrada en [CHANGELOG.md](CHANGELOG.md) y haz commit.
+2. Desde el equipo que tiene el certificado de firma, con [GitHub CLI](https://cli.github.com/) con sesión iniciada:
+   ```powershell
+   .\scripts\publicar.ps1 1.4.1
    ```
-3. GitHub Actions ([build.yml](.github/workflows/build.yml)) compila y crea la Release con `AppRouter-1.4.0.exe`, `LEEME.txt` y `SHA256SUMS.txt`.
+   Compila, **firma** `AppRouter-1.4.1.exe` ([scripts/firmar.ps1](scripts/firmar.ps1)), calcula `SHA256SUMS.txt` después de firmar, sube la etiqueta y crea la Release con el `.exe`, `LEEME.txt` y `SHA256SUMS.txt`. Con `-SoloCompilar` deja el resultado en `dist\` sin publicar nada.
+
+GitHub Actions ([build.yml](.github/workflows/build.yml)) compila cada push y cada etiqueta como comprobación, pero no crea Releases: el certificado de firma nunca se sube a GitHub.
 
 Traducciones y cómo colaborar: [CONTRIBUTING.md](CONTRIBUTING.md).
 

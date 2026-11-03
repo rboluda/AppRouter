@@ -2,6 +2,12 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones según [SemVer](https://semver.org/lang/es/).
 
+## [1.4.1] - 2026-11-03
+
+### Cambiado
+- El ejecutable (programa, instalador y desinstalador, que son el mismo `AppRouter.exe`) va **firmado digitalmente** por rboluda, con sello de tiempo de DigiCert. sing-box se incluye sin tocar.
+- Las versiones se publican con `scripts/publicar.ps1`, que firma antes de calcular `SHA256SUMS.txt`; GitHub Actions solo compila como comprobación.
+
 ## [1.4.0] - 2026-10-26
 
 ### Añadido
@@ -66,6 +72,7 @@ Versión interna («Enrutado por programa» / `SingBoxRouter`).
 - Instalador en un único `.exe` (incluye .NET y sing-box 1.14.3) y servicio de Windows propio.
 - Ventana «Comprobar…»: por dónde sale cada conexión según sing-box y según Windows.
 
+[1.4.1]: https://github.com/rboluda/approuter/releases/tag/v1.4.1
 [1.4.0]: https://github.com/rboluda/approuter/releases/tag/v1.4.0
 [1.3.0]: https://github.com/rboluda/approuter/releases/tag/v1.3.0
 [1.2.0]: https://github.com/rboluda/approuter/releases/tag/v1.2.0

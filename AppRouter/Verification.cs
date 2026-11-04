@@ -210,6 +210,9 @@ public static class Verifier
         {
             var expected = Routing.Effective(settings, Routing.RuleFor(settings, c.ProcessName), usable);
             var via = SingBoxConfig.TargetFromTag(c.OutboundTag) ?? (c.OutboundTag == "" ? "" : c.OutboundTag);
+            // Conexiones a los DNS internos (dominios internos): de cualquier programa, por la conexión de la intranet.
+            if (c.OutboundTag == SingBoxConfig.IntranetTag && settings.IntranetInterface is { } intranet)
+                expected = via = intranet;
 
             // Si sing-box solo conoce el nombre (p. ej. conexiones por dominio), se resuelve aquí.
             IPAddress[] destIps = c.DestIp is not null ? [c.DestIp]

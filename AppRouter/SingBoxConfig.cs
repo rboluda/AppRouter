@@ -157,7 +157,7 @@ public static class SingBoxConfig
 
     // ---------- Dominios internos ----------
 
-    const string IntranetTag = "intranet";
+    public const string IntranetTag = "intranet";
     const string SystemDnsTag = "sistema";
     static string InternalDnsTag(int i) => "interno-" + i;
     /// <summary>Tiempo máximo de cada DNS interno antes de probar el siguiente.</summary>

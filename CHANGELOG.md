@@ -2,6 +2,11 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones según [SemVer](https://semver.org/lang/es/).
 
+## [1.5.1] - 2026-11-04
+
+### Corregido
+- «Comprobar…» marcaba en rojo las conexiones a los DNS internos (por ejemplo, las de Windows con el controlador de dominio), que salen a propósito por la conexión de la intranet. Ahora las da por correctas; en *Tráfico por programa* aparecen como «intranet».
+
 ## [1.5.0] - 2026-11-04
 
 ### Añadido
@@ -81,6 +86,7 @@ Versión interna («Enrutado por programa» / `SingBoxRouter`).
 - Instalador en un único `.exe` (incluye .NET y sing-box 1.14.3) y servicio de Windows propio.
 - Ventana «Comprobar…»: por dónde sale cada conexión según sing-box y según Windows.
 
+[1.5.1]: https://github.com/rboluda/approuter/releases/tag/v1.5.1
 [1.5.0]: https://github.com/rboluda/approuter/releases/tag/v1.5.0
 [1.4.1]: https://github.com/rboluda/approuter/releases/tag/v1.4.1
 [1.4.0]: https://github.com/rboluda/approuter/releases/tag/v1.4.0

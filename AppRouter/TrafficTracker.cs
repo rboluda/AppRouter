@@ -23,7 +23,7 @@ public sealed class TrafficTracker
             foreach (var c in conns)
             {
                 seen.Add(c.Id);
-                open[c.Id] = (c.ProcessName, SingBoxConfig.TargetFromTag(c.OutboundTag) ?? "", c.Upload, c.Download);
+                open[c.Id] = (c.ProcessName, SingBoxConfig.TargetFromTag(c.OutboundTag) ?? c.OutboundTag, c.Upload, c.Download);
             }
             foreach (var id in open.Keys.Where(id => !seen.Contains(id)).ToList())
             {

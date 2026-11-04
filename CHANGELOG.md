@@ -2,6 +2,15 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones según [SemVer](https://semver.org/lang/es/).
 
+## [1.5.0] - 2026-11-04
+
+### Añadido
+- **Dominios internos** (*Configuración → Enrutado*): sufijos (p. ej. `empresa.local`), servidores DNS internos y la conexión por la que se llega a ellos; «Detectar» los toma de Windows. Esos nombres y la resolución inversa de las redes excluidas (p. ej. `10.in-addr.arpa`) solo se preguntan a esos DNS, uno tras otro, por esa conexión; si no responde ninguno, la consulta falla sin probar otro DNS. Las demás consultas no cambian.
+
+### Corregido
+- Con AppRouter activo no se resolvían los nombres `.local` de la red de la empresa: sing-box los enviaba a mDNS.
+- Una consulta directa a un DNS interno (p. ej. `nslookup nombre 10.10.100.1`) agotaba el tiempo: `strict_route` bloquea el puerto 53 fuera del túnel a cualquier programa salvo sing-box, aunque el destino esté excluido. Ahora los DNS internos configurados pasan por el túnel y salen por la conexión de la intranet.
+
 ## [1.4.1] - 2026-11-03
 
 ### Cambiado
@@ -72,6 +81,7 @@ Versión interna («Enrutado por programa» / `SingBoxRouter`).
 - Instalador en un único `.exe` (incluye .NET y sing-box 1.14.3) y servicio de Windows propio.
 - Ventana «Comprobar…»: por dónde sale cada conexión según sing-box y según Windows.
 
+[1.5.0]: https://github.com/rboluda/approuter/releases/tag/v1.5.0
 [1.4.1]: https://github.com/rboluda/approuter/releases/tag/v1.4.1
 [1.4.0]: https://github.com/rboluda/approuter/releases/tag/v1.4.0
 [1.3.0]: https://github.com/rboluda/approuter/releases/tag/v1.3.0

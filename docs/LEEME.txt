@@ -59,6 +59,11 @@ Enrutado
       - usar mientras tanto la del resto del tráfico (cambia solo y vuelve solo).
   • Redes que no pasan por AppRouter: el tráfico hacia ellas (por ejemplo, la red interna
     10.x.x.x) va siempre por su camino normal. Cambiarlas corta un momento las conexiones.
+  • Dominios internos: si los nombres de la red de la empresa (p. ej. servidor.empresa.local)
+    no se resuelven con AppRouter activo, escribe aquí sus dominios, los servidores DNS de la
+    empresa y la conexión por la que se llega a ellos (o pulsa «Detectar»). Esos nombres, y la
+    búsqueda inversa de las redes de arriba, solo se preguntan a esos DNS; si no responden,
+    fallan. Las demás consultas no cambian.
 
 
 ABRIR Y CERRAR

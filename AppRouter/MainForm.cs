@@ -817,7 +817,9 @@ public class MainForm : Form
 
         var languageChanged = r.Language != settings.Language;
         var visibleChanged = !r.VisibleInterfaces.SequenceEqual(settings.VisibleInterfaces);
-        var routingChanged = r.OnDisconnect != settings.OnDisconnect || !r.ExcludedSubnets.SequenceEqual(settings.ExcludedSubnets);
+        var routingChanged = r.OnDisconnect != settings.OnDisconnect || !r.ExcludedSubnets.SequenceEqual(settings.ExcludedSubnets)
+            || !r.InternalDomains.SequenceEqual(settings.InternalDomains) || !r.InternalDnsServers.SequenceEqual(settings.InternalDnsServers)
+            || r.IntranetInterface != settings.IntranetInterface;
         var updatesEnabled = r.CheckUpdates && !settings.CheckUpdates || r.AutoUpdate && !settings.AutoUpdate;
 
         // Las preferencias se guardan sobre lo guardado (no sobre cambios de la lista aún sin aplicar).

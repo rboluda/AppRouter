@@ -88,10 +88,16 @@ public static class SingBoxConfig
 
         // Primero los programas sin internet, luego los programas de la lista y por último el "resto del tráfico".
         // Lo que no coincide con nada (resto del tráfico desconectado) va por "final": la ruta de Windows.
-        var rules = new JsonArray
+        var rules = new JsonArray();
+        // Dominios internos: los DNS internos (cualquier puerto) salen por la conexión de la intranet. Entran en
+        // el túnel (ver ExcludedForTun) porque strict_route bloquea el puerto 53 fuera de él a todo menos sing-box.
+        var internalDns = InternalDnsActive(settings, out var intranet);
+        if (internalDns)
         {
-            new JsonObject { ["rule_set"] = BlockedTag, ["action"] = "reject" },
-        };
+            outbounds.Insert(0, new JsonObject { ["type"] = "direct", ["tag"] = IntranetTag, ["bind_interface"] = intranet });
+            rules.Add(new JsonObject { ["ip_cidr"] = Array(DnsHosts(settings).Select(HostCidr)), ["action"] = "route", ["outbound"] = IntranetTag });
+        }
+        rules.Add(new JsonObject { ["rule_set"] = BlockedTag, ["action"] = "reject" });
         // El DNS (puerto 53) de los programas no pasa por el limitador: strict_route de sing-box bloquea
         // el puerto 53 a cualquier otro proceso, y además su velocidad es insignificante.
         foreach (var iface in interfaces)
@@ -116,7 +122,9 @@ public static class SingBoxConfig
                     ["address"] = Array(["172.19.0.1/30"]),
                     ["auto_route"] = true,
                     ["strict_route"] = true,
-                    ["route_exclude_address"] = Array(settings.ExcludedSubnets),
+                    ["route_exclude_address"] = Array(internalDns
+                        ? InternalDns.Subtract(settings.ExcludedSubnets, DnsHosts(settings))
+                        : settings.ExcludedSubnets),
                 },
             },
             ["outbounds"] = outbounds,
@@ -138,7 +146,86 @@ public static class SingBoxConfig
                 },
             },
         };
+        if (InternalDns.Enabled(settings))
+        {
+            root["dns"] = BuildDns(settings, internalDns);
+            // Con una sección dns hay que nombrar el resolvedor por defecto: el del sistema, como sin ella.
+            ((JsonObject)root["route"]!)["default_domain_resolver"] = SystemDnsTag;
+        }
         return root.ToJsonString(JsonOpts);
+    }
+
+    // ---------- Dominios internos ----------
+
+    const string IntranetTag = "intranet";
+    const string SystemDnsTag = "sistema";
+    static string InternalDnsTag(int i) => "interno-" + i;
+    /// <summary>Tiempo máximo de cada DNS interno antes de probar el siguiente.</summary>
+    const string InternalDnsTimeout = "2s";
+
+    /// <summary>Hay DNS internos y una conexión por la que preguntarles.</summary>
+    static bool InternalDnsActive(AppSettings s, out string intranet)
+    {
+        intranet = s.IntranetInterface ?? "";
+        return InternalDns.Enabled(s) && intranet != "";
+    }
+
+    static List<System.Net.IPAddress> DnsHosts(AppSettings s) =>
+        s.InternalDnsServers.Select(System.Net.IPAddress.Parse).ToList();
+
+    static string HostCidr(System.Net.IPAddress ip) =>
+        ip + (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? "/32" : "/128");
+
+    /// <summary>Sufijos internos más la resolución inversa de las redes excluidas (p. ej. 10.in-addr.arpa).</summary>
+    public static List<string> InternalSuffixes(AppSettings s) =>
+        s.InternalDomains
+            .Concat(s.ExcludedSubnets
+                .Select(n => System.Net.IPNetwork.TryParse(n, out var net) ? InternalDns.ReverseZones(net) : [])
+                .SelectMany(z => z))
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+    /// <summary>
+    /// Sección dns. Las consultas de los sufijos internos van al primer DNS interno; si no contesta (o da
+    /// error) al siguiente, y así hasta el último. Si ninguno responde, la consulta falla: nunca se pregunta a
+    /// otro DNS. Todo lo demás va a "sistema" (el resolvedor local de Windows), igual que sin esta sección.
+    /// </summary>
+    static JsonObject BuildDns(AppSettings settings, bool active)
+    {
+        var suffixes = Array(InternalSuffixes(settings));
+        var servers = new JsonArray { new JsonObject { ["type"] = "local", ["tag"] = SystemDnsTag } };
+        var rules = new JsonArray();
+        if (!active)
+        {
+            // Sin conexión de intranet elegida: fallan en vez de salir por otro sitio.
+            rules.Add(new JsonObject { ["domain_suffix"] = suffixes, ["action"] = "predefined", ["rcode"] = "REFUSED" });
+        }
+        else
+        {
+            var n = settings.InternalDnsServers.Count;
+            for (var i = 1; i <= n; i++)
+            {
+                var ip = settings.InternalDnsServers[i - 1];
+                servers.Add(new JsonObject
+                {
+                    ["type"] = "udp",
+                    ["tag"] = InternalDnsTag(i),
+                    ["server"] = ip,
+                    ["server_port"] = 53,
+                    ["bind_interface"] = settings.IntranetInterface,
+                });
+                if (i < n)
+                {
+                    var tag = "r" + i;
+                    rules.Add(new JsonObject { ["domain_suffix"] = suffixes.DeepClone(), ["action"] = "evaluate", ["server"] = InternalDnsTag(i), ["tag"] = tag, ["timeout"] = InternalDnsTimeout });
+                    // Respuesta válida (también «no existe»): se da por buena. Si no, se prueba el siguiente.
+                    foreach (var rcode in new[] { "NOERROR", "NXDOMAIN" })
+                        rules.Add(new JsonObject { ["domain_suffix"] = suffixes.DeepClone(), ["match_response"] = tag, ["response_rcode"] = rcode, ["action"] = "respond" });
+                }
+                else
+                    rules.Add(new JsonObject { ["domain_suffix"] = suffixes.DeepClone(), ["action"] = "route", ["server"] = InternalDnsTag(i), ["timeout"] = InternalDnsTimeout });
+            }
+        }
+        return new JsonObject { ["servers"] = servers, ["rules"] = rules, ["final"] = SystemDnsTag };
     }
 
     /// <summary>

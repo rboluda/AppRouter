@@ -36,6 +36,15 @@ public class AppSettings
     public List<string> ExcludedSubnets { get; set; } = ["10.0.0.0/8"];
     public List<ProgramRule> Rules { get; set; } = [];
 
+    // --- Dominios internos (ver InternalDns) ---
+
+    /// <summary>Sufijos que solo se preguntan a los DNS internos (p. ej. medioambiental.local).</summary>
+    public List<string> InternalDomains { get; set; } = [];
+    /// <summary>DNS internos, por orden; vacía = función desactivada.</summary>
+    public List<string> InternalDnsServers { get; set; } = [];
+    /// <summary>Conexión por la que se pregunta a los DNS internos (la que llega a la intranet).</summary>
+    public string? IntranetInterface { get; set; }
+
     // --- Preferencias (ventana Configuración) ---
 
     /// <summary>"es", "en", "zh" o null (idioma del sistema).</summary>
@@ -103,6 +112,9 @@ public class AppSettings
         VisibleInterfaces = [.. o.VisibleInterfaces];
         OnDisconnect = o.OnDisconnect;
         ExcludedSubnets = [.. o.ExcludedSubnets];
+        InternalDomains = [.. o.InternalDomains];
+        InternalDnsServers = [.. o.InternalDnsServers];
+        IntranetInterface = o.IntranetInterface;
         NotifyNetworkChanges = o.NotifyNetworkChanges;
         CheckUpdates = o.CheckUpdates;
         AutoUpdate = o.AutoUpdate;
@@ -117,6 +129,9 @@ public class AppSettings
         public string? DefaultInterface { get; set; }
         public List<ProgramRule> Rules { get; set; } = [];
         public List<string> ExcludedSubnets { get; set; } = [];
+        public List<string> InternalDomains { get; set; } = [];
+        public List<string> InternalDnsServers { get; set; } = [];
+        public string? IntranetInterface { get; set; }
         public List<string> VisibleInterfaces { get; set; } = [];
         [JsonConverter(typeof(JsonStringEnumConverter))]
         public DisconnectAction OnDisconnect { get; set; }
@@ -131,6 +146,9 @@ public class AppSettings
         DefaultInterface = DefaultInterface,
         Rules = Rules,
         ExcludedSubnets = ExcludedSubnets,
+        InternalDomains = InternalDomains,
+        InternalDnsServers = InternalDnsServers,
+        IntranetInterface = IntranetInterface,
         VisibleInterfaces = VisibleInterfaces,
         OnDisconnect = OnDisconnect,
         Language = Language,
@@ -149,10 +167,21 @@ public class AppSettings
         foreach (var s in e.ExcludedSubnets)
             if (!IPNetwork.TryParse(s, out _))
                 throw new InvalidDataException(L.F("Red no válida en el archivo: {0}", s));
+        foreach (var d in e.InternalDomains)
+            if (InternalDns.NormalizeDomain(d) is null)
+                throw new InvalidDataException(L.F("Dominio no válido en el archivo: {0}", d));
+        foreach (var s in e.InternalDnsServers)
+            if (InternalDns.NormalizeServer(s) is null)
+                throw new InvalidDataException(L.F("Servidor DNS no válido en el archivo: {0}", s));
 
         DefaultInterface = e.DefaultInterface;
         Rules = e.Rules.Where(r => r.Path != "" && r.Interface != "").ToList();
         ExcludedSubnets = e.ExcludedSubnets;
+        InternalDomains = e.InternalDomains.Select(d => InternalDns.NormalizeDomain(d)!).Distinct().ToList();
+        InternalDnsServers = e.InternalDnsServers.Select(s => InternalDns.NormalizeServer(s)!).Distinct().ToList();
+        // La conexión de la intranet puede llamarse distinto en otro equipo: si no existe, se busca.
+        IntranetInterface = e.IntranetInterface is { } i && GetInterfaces().Contains(i, StringComparer.OrdinalIgnoreCase) ? i
+            : InternalDnsServers.Count > 0 ? InternalDns.DetectInterface(InternalDnsServers, ExcludedSubnets) : null;
         VisibleInterfaces = e.VisibleInterfaces;
         OnDisconnect = e.OnDisconnect;
         Language = e.Language;

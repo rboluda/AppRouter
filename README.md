@@ -39,7 +39,7 @@ Requiere Windows 10/11 de 64 bits y permisos de administrador.
 |---|---|
 | **General** | Idioma · abrir al iniciar sesión · avisos cuando una conexión usada se desconecta o vuelve · buscar actualizaciones y, si se quiere, **instalarlas solo** (desactivado por defecto) · exportar/importar la configuración a un archivo |
 | **Interfaces** | Qué conexiones aparecen en los desplegables (por ejemplo, solo Ethernet, Wi-Fi y 4G de entre todas las del equipo) |
-| **Enrutado** | Si se desconecta la conexión de un programa: dejarlo sin internet hasta que vuelva, o usar mientras tanto la del resto del tráfico (cambio automático, sin cortar lo demás) · redes que no pasan por AppRouter (por defecto `10.0.0.0/8`) |
+| **Enrutado** | Si se desconecta la conexión de un programa: dejarlo sin internet hasta que vuelva, o usar mientras tanto la del resto del tráfico (cambio automático, sin cortar lo demás) · redes que no pasan por AppRouter (por defecto `10.0.0.0/8`) · dominios internos (DNS dividido: sus nombres y la inversa de esas redes solo se preguntan a los DNS de la empresa) |
 
 <p align="center"><img src="docs/img/configuracion.png" width="520" alt="Configuración: elegir las interfaces que aparecen en los desplegables"></p>
 

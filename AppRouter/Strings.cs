@@ -258,6 +258,31 @@ public static partial class L
         ["«{0}» no es una red válida. Usa el formato dirección/prefijo, por ejemplo 192.168.1.0/24."] =
             ("“{0}” is not a valid network. Use the address/prefix format, for example 192.168.1.0/24.", "“{0}”不是有效的网络。请使用“地址/前缀”格式，例如 192.168.1.0/24。"),
 
+        // --- Dominios internos ---
+        ["Dominios internos"] = ("Internal domains", "内部域名"),
+        ["Los nombres de estos dominios, y la búsqueda inversa de las redes de arriba, solo se preguntan a estos servidores DNS y por esta conexión. Si no responden, la consulta falla (nunca se pregunta a otro DNS). Las demás consultas no cambian. Déjalo vacío para no usarlo."] =
+            ("Names in these domains, and reverse lookups for the networks above, are only sent to these DNS servers and through this connection. If they don't answer, the lookup fails (no other DNS is ever asked). Other lookups are unchanged. Leave it empty to not use it.",
+             "这些域名的名称，以及上方网络的反向查询，只会通过此连接发送到这些 DNS 服务器。如果它们没有响应，查询将失败（绝不会询问其他 DNS）。其他查询不受影响。留空则不使用。"),
+        ["p. ej. empresa.local, empresa.lan"] = ("e.g. company.local, company.lan", "例如 company.local, company.lan"),
+        ["p. ej. 10.10.100.1, 10.10.100.2"] = ("e.g. 10.10.100.1, 10.10.100.2", "例如 10.10.100.1, 10.10.100.2"),
+        ["Dominios:"] = ("Domains:", "域名："),
+        ["Servidores DNS:"] = ("DNS servers:", "DNS 服务器："),
+        ["Por la conexión:"] = ("Through connection:", "通过连接："),
+        ["Detectar"] = ("Detect", "检测"),
+        ["«Detectar» busca la conexión cuyos servidores DNS están en las redes de arriba y toma su sufijo DNS. Cambiar estos datos reinicia el servicio."] =
+            ("“Detect” looks for the connection whose DNS servers are in the networks above and takes its DNS suffix. Changing these settings restarts the service.",
+             "“检测”会查找 DNS 服务器位于上方网络中的连接，并采用其 DNS 后缀。修改这些设置会重启服务。"),
+        ["Ninguna conexión tiene servidores DNS dentro de las redes que no pasan por AppRouter. Escribe los datos a mano."] =
+            ("No connection has DNS servers inside the networks that bypass AppRouter. Enter the details manually.",
+             "没有任何连接的 DNS 服务器位于不经过 AppRouter 的网络中。请手动填写。"),
+        ["«{0}» no es un nombre de dominio válido."] = ("“{0}” is not a valid domain name.", "“{0}”不是有效的域名。"),
+        ["«{0}» no es una dirección IP válida."] = ("“{0}” is not a valid IP address.", "“{0}”不是有效的 IP 地址。"),
+        ["Indica al menos un servidor DNS interno para esos dominios."] = ("Enter at least one internal DNS server for those domains.", "请为这些域名至少填写一个内部 DNS 服务器。"),
+        ["Elige la conexión por la que se llega a los servidores DNS internos (la de la red de la empresa)."] =
+            ("Choose the connection that reaches the internal DNS servers (the company network one).", "请选择能访问内部 DNS 服务器的连接（公司网络所用的连接）。"),
+        ["Dominio no válido en el archivo: {0}"] = ("Invalid domain in the file: {0}", "文件中的域名无效：{0}"),
+        ["Servidor DNS no válido en el archivo: {0}"] = ("Invalid DNS server in the file: {0}", "文件中的 DNS 服务器无效：{0}"),
+
         // --- Límite de velocidad ---
         ["LÍMITE"] = ("LIMIT", "限速"),
         ["Límite"] = ("Limit", "限速"),

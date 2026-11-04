@@ -28,6 +28,9 @@ public class SettingsForm : Form
     readonly RadioButton onDownFallback = new() { AutoSize = true };
     readonly ListBox excluded = new() { Dock = DockStyle.Fill, IntegralHeight = false };
     readonly TextBox newSubnet = new() { Width = 220 };
+    readonly TextBox internalDomains = new() { Dock = DockStyle.Fill };
+    readonly TextBox internalServers = new() { Dock = DockStyle.Fill };
+    readonly ComboBox intranet = new() { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill };
     readonly bool autostartWas;
 
     public AppSettings Result => edit;
@@ -47,7 +50,7 @@ public class SettingsForm : Form
         Text = L.T("Configuración");
         Icon = AppIcon.Load(new Size(32, 32));
         Font = new Font(L.FontName, 9.5f);
-        ClientSize = new Size(640, 520);
+        ClientSize = new Size(640, 580);
         MinimumSize = new Size(560, 440);
         StartPosition = FormStartPosition.CenterParent;
         MinimizeBox = false;
@@ -187,6 +190,7 @@ public class SettingsForm : Form
     {
         var page = new TabPage(L.T("Enrutado")) { Padding = new Padding(12) };
         var t = Table(page);
+        t.AutoScroll = true; // con los dominios internos ya no cabe todo en ventanas pequeñas
 
         AddRow(t, Heading(L.T("Si se desconecta la conexión de un programa")));
         onDownBlock.Text = L.T("Dejarlo sin internet hasta que vuelva (nunca sale por otra conexión)");
@@ -213,7 +217,95 @@ public class SettingsForm : Form
         var row = new FlowLayoutPanel { AutoSize = true, Margin = Padding.Empty };
         row.Controls.AddRange([newSubnet, add, remove]);
         AddRow(t, row);
+
+        AddRow(t, Heading(L.T("Dominios internos")));
+        AddRow(t, Note(L.T("Los nombres de estos dominios, y la búsqueda inversa de las redes de arriba, solo se preguntan a estos servidores DNS y por esta conexión. Si no responden, la consulta falla (nunca se pregunta a otro DNS). Las demás consultas no cambian. Déjalo vacío para no usarlo.")));
+        var grid = new TableLayoutPanel { ColumnCount = 2, AutoSize = true, Dock = DockStyle.Top, Margin = Padding.Empty };
+        grid.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        internalDomains.Text = string.Join(", ", edit.InternalDomains);
+        internalDomains.PlaceholderText = L.T("p. ej. empresa.local, empresa.lan");
+        internalServers.Text = string.Join(", ", edit.InternalDnsServers);
+        internalServers.PlaceholderText = L.T("p. ej. 10.10.100.1, 10.10.100.2");
+        FillIntranet(edit.IntranetInterface);
+        void Field(string label, Control c)
+        {
+            grid.Controls.Add(new Label { Text = label, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(3, 6, 8, 3) });
+            grid.Controls.Add(c);
+        }
+        Field(L.T("Dominios:"), internalDomains);
+        Field(L.T("Servidores DNS:"), internalServers);
+        Field(L.T("Por la conexión:"), intranet);
+        AddRow(t, grid);
+        var detect = new Button { Text = L.T("Detectar"), AutoSize = true };
+        detect.Click += (_, _) => DetectInternal();
+        AddRow(t, detect);
+        AddRow(t, Note(L.T("«Detectar» busca la conexión cuyos servidores DNS están en las redes de arriba y toma su sufijo DNS. Cambiar estos datos reinicia el servicio.")));
         return page;
+    }
+
+    void FillIntranet(string? selected)
+    {
+        intranet.Items.Clear();
+        foreach (var i in AppSettings.GetInterfaces()) intranet.Items.Add(i);
+        if (selected is not null && !intranet.Items.Contains(selected)) intranet.Items.Add(selected); // desconectada ahora
+        intranet.SelectedItem = selected;
+    }
+
+    void DetectInternal()
+    {
+        var found = InternalDns.Detect(excluded.Items.Cast<string>());
+        if (found is null)
+        {
+            MessageBox.Show(this, L.T("Ninguna conexión tiene servidores DNS dentro de las redes que no pasan por AppRouter. Escribe los datos a mano."),
+                Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+        var domains = InternalDns.SplitList(internalDomains.Text).Concat(found.Domains).Distinct(StringComparer.OrdinalIgnoreCase);
+        internalDomains.Text = string.Join(", ", domains);
+        internalServers.Text = string.Join(", ", found.Servers);
+        FillIntranet(found.Interface);
+    }
+
+    /// <summary>Valida y guarda los dominios internos. False (y la ventana sigue abierta) si algo no es válido.</summary>
+    bool CollectInternal()
+    {
+        var domains = new List<string>();
+        foreach (var d in InternalDns.SplitList(internalDomains.Text))
+        {
+            if (InternalDns.NormalizeDomain(d) is not { } n)
+                return Invalid(L.F("«{0}» no es un nombre de dominio válido.", d), internalDomains);
+            if (!domains.Contains(n)) domains.Add(n);
+        }
+        var servers = new List<string>();
+        foreach (var s in InternalDns.SplitList(internalServers.Text))
+        {
+            if (InternalDns.NormalizeServer(s) is not { } n)
+                return Invalid(L.F("«{0}» no es una dirección IP válida.", s), internalServers);
+            if (!servers.Contains(n)) servers.Add(n);
+        }
+        if (domains.Count > 0 && servers.Count == 0)
+            return Invalid(L.T("Indica al menos un servidor DNS interno para esos dominios."), internalServers);
+
+        var iface = intranet.SelectedItem as string;
+        if (servers.Count > 0 && iface is null)
+        {
+            iface = InternalDns.DetectInterface(servers, excluded.Items.Cast<string>());
+            if (iface is null)
+                return Invalid(L.T("Elige la conexión por la que se llega a los servidores DNS internos (la de la red de la empresa)."), intranet);
+            FillIntranet(iface);
+        }
+        edit.InternalDomains = domains;
+        edit.InternalDnsServers = servers;
+        edit.IntranetInterface = servers.Count > 0 ? iface : null;
+        return true;
+    }
+
+    bool Invalid(string message, Control focus)
+    {
+        MessageBox.Show(this, message, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        focus.Focus();
+        return false;
     }
 
     void AddSubnet()
@@ -249,7 +341,7 @@ public class SettingsForm : Form
             if (newSubnet.Text.Trim() != "") return false; // no era válido: se queda abierta
         }
         edit.ExcludedSubnets = excluded.Items.Cast<string>().ToList();
-        return true;
+        return CollectInternal();
     }
 
     // ---------- Maquetación ----------
